@@ -1,6 +1,6 @@
 import { Router } from "express";
 import db from "../db.js";
-import { authMiddleware } from "../middleware/auth.js";
+import { adminOnly, authMiddleware } from "../middleware/auth.js";
 // 规则引擎唯一源码（与前端共用同一份，纯函数），后端只做数据映射 + 隔离，不重复实现评分
 import { analyzeHealth } from "../../shared/health-engine.js";
 import type {
@@ -446,8 +446,9 @@ router.post("/health/records", authMiddleware, (req, res) => {
  * 行级校验失败返回 HTTP 200 + `errors[]`（不是 400）：前端 `http` 封装对非 2xx 直接 reject，
  * 而导入页只 `try/finally`，400 会让页面静默失败、连错误行都看不到。
  * 请求体本身不合法（`list` 不是数组）才返回 400 40001，与 B3 的错误码口径一致。
+ * 权限：方案接口清单标注为 **admin**，故叠加 `adminOnly`（common 调用 → 403）。
  */
-router.post("/health/records/import", authMiddleware, (req, res) => {
+router.post("/health/records/import", authMiddleware, adminOnly, (req, res) => {
   const userId = req.user!.id;
   const body = (req.body ?? {}) as Record<string, unknown>;
   const list = body.list;
@@ -632,6 +633,9 @@ router.post("/health/analyze", authMiddleware, (req, res) => {
 
 // ---------- 报告：生成 / 历史 / 详情（数据源统一为 reports 表） ----------
 
+/** 每用户最多保留的报告份数（方案 B5：「最多留 20 份」，超出删最旧） */
+const REPORT_KEEP_LIMIT = 20;
+
 interface ReportRow {
   id: number;
   period_start: string | null;
@@ -752,6 +756,16 @@ router.post("/health/report/generate", authMiddleware, (req, res) => {
       JSON.stringify(content.radar),
       JSON.stringify(content.trend)
     );
+
+  // 每用户最多保留 20 份（方案 B5 明确要求，与 mock 的 `unshift + slice(0,20)` 行为对齐）：
+  // 超出的删最旧。按 id DESC 判定新旧（id 即生成顺序，比秒级 create_time 更稳）。
+  db.prepare(
+    `DELETE FROM reports
+     WHERE user_id = ?
+       AND id NOT IN (
+         SELECT id FROM reports WHERE user_id = ? ORDER BY id DESC LIMIT ${REPORT_KEEP_LIMIT}
+       )`
+  ).run(userId, userId);
 
   res.json({
     code: 0,
