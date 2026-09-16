@@ -3,6 +3,7 @@ import { env } from "./env.js";
 import express from "express";
 import { initDb } from "./db.js";
 import authRouter from "./routes/auth.js";
+import healthRouter from "./routes/health.js";
 
 const app = express();
 const port = env.PORT;
@@ -18,6 +19,9 @@ app.get("/api/ping", (_req, res) => {
 
 // 鉴权与登录：login / refresh-token / mine / mine-logs / get-async-routes
 app.use("/api", authRouter);
+
+// 健康档案与指标记录：profile / records
+app.use("/api", healthRouter);
 
 app.listen(port, () => {
   console.log(`zhikang server listening on http://localhost:${port}`);

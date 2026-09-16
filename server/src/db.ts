@@ -91,7 +91,36 @@ export function initDb(): void {
     );
   `);
 
+  migrateProfiles();
   seedUsers();
+}
+
+/**
+ * profiles 表最小迁移（幂等）：B1 建表时只有 name/gender(男male|女female)/birth_date/
+ * height/weight + 整数枚举的生活习惯列，B3 前端表单还需要年龄/腰围/既往病史/家族史/过敏史。
+ * 用 pragma_table_info 检查缺列，缺哪列补哪列，老库新库都能直接启动。
+ */
+function migrateProfiles(): void {
+  const columns = db
+    .prepare("SELECT name FROM pragma_table_info('profiles')")
+    .all() as Array<{ name: string }>;
+  const existing = new Set(columns.map(c => c.name));
+  const additions: Array<[string, string]> = [
+    ["age", "INTEGER DEFAULT 0"],
+    ["waistline", "REAL DEFAULT 0"],
+    ["medical_history", "TEXT DEFAULT ''"],
+    ["family_history", "TEXT DEFAULT ''"],
+    ["allergy_history", "TEXT DEFAULT ''"]
+  ];
+
+  const added: Array<string> = [];
+  for (const [name, ddl] of additions) {
+    if (existing.has(name)) continue;
+    // 列名来自上方常量白名单，非用户输入，无注入风险
+    db.exec(`ALTER TABLE profiles ADD COLUMN ${name} ${ddl}`);
+    added.push(name);
+  }
+  if (added.length) console.log(`[db] profiles 表补列：${added.join(", ")}`);
 }
 
 /** 种子账号：admin/admin123（管理员）、common/common123（普通用户），密码 bcrypt 哈希入库 */

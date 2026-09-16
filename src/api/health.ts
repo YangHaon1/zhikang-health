@@ -23,12 +23,15 @@ type PageResult<T> = {
 
 /** 读取个人档案 */
 export const getHealthProfile = () => {
-  return http.request<Result<HealthProfile | null>>("get", "/health/profile");
+  return http.request<Result<HealthProfile | null>>(
+    "get",
+    "/api/health/profile"
+  );
 };
 
 /** 更新个人档案 */
 export const updateHealthProfile = (data: Partial<HealthProfile>) => {
-  return http.request<Result<HealthProfile>>("put", "/health/profile", {
+  return http.request<Result<HealthProfile>>("put", "/api/health/profile", {
     data
   });
 };
@@ -42,28 +45,30 @@ export const getHealthRecords = (data?: {
 }) => {
   return http.request<Result<PageResult<HealthRecord>>>(
     "get",
-    "/health/records",
+    "/api/health/records",
     { params: data }
   );
 };
 
 /** 新增一条健康记录 */
 export const addHealthRecord = (data: Omit<HealthRecord, "id">) => {
-  return http.request<Result<HealthRecord>>("post", "/health/records", {
+  return http.request<Result<HealthRecord>>("post", "/api/health/records", {
     data
   });
 };
 
 /** 修改健康记录 */
 export const updateHealthRecord = (id: string, data: Partial<HealthRecord>) => {
-  return http.request<Result<HealthRecord>>("put", `/health/records/${id}`, {
-    data
-  });
+  return http.request<Result<HealthRecord>>(
+    "put",
+    `/api/health/records/${id}`,
+    { data }
+  );
 };
 
 /** 删除健康记录 */
 export const deleteHealthRecord = (id: string) => {
-  return http.request<Result<null>>("delete", `/health/records/${id}`);
+  return http.request<Result<null>>("delete", `/api/health/records/${id}`);
 };
 
 /** 批量导入健康记录（返回成功/失败计数与行级错误明细） */
