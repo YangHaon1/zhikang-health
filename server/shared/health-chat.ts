@@ -1,5 +1,5 @@
 // AI 健康对话·方案 A 内核（唯一源码）
-// ★ 后端（server/src/routes/health.ts 的 /api/health/chat）与 mock（mock/health.ts）共用这一份，切勿双写。
+// ★ 后端（server/src/routes/health.ts 的 /api/health/chat）与前端（@shared 别名）共用这一份，切勿双写。
 // 纯函数、禁 Node/DOM 依赖 —— 因此可同时被 Express 与浏览器加载。
 //
 // 流程：关键词意图匹配 → 取档案 + 最近 5 条记录 → 规则引擎（health-engine）→ 拼接自然语言回答。

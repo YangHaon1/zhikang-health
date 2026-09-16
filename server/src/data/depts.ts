@@ -1,7 +1,7 @@
 /**
  * 部门数据（用户管理页左侧部门树 + 归属部门级联选择器）。
  *
- * 从 mock/system.ts 的 `/dept` 原样迁移：结构、id 与层级不变（前端 `handleTree` 依赖 parentId），
+ * B8 由改造前的 mock 数据原样迁移：结构、id 与层级不变（前端 `handleTree` 依赖 parentId），
  * 仅把原来的 faker 随机负责人/邮箱换成固定值 —— 服务端种子数据要可复现，不引入随机。
  */
 export interface DeptRow {

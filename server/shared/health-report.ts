@@ -1,5 +1,5 @@
 // 健康报告模板（AI 方案 A 内核的报告组装层）
-// ★ 唯一源码：后端（server/src/routes/health.ts 的 /api/health/report/*）与 mock（mock/health.ts）共用这一份，切勿双写。
+// ★ 唯一源码：后端（server/src/routes/health.ts 的 /api/health/report/*）与前端（@shared 别名）共用这一份，切勿双写。
 // 纯函数、禁 Node/DOM 依赖 —— 因此可同时被 Express 与浏览器加载。
 //
 // 分工：`buildReport` 只产出「报告内容」（不含 id / generateTime），

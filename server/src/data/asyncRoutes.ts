@@ -1,5 +1,5 @@
 /**
- * 动态路由表（由 mock/asyncRoutes.ts 原样迁移，数据结构不变）。
+ * 动态路由表（B2 由改造前的 mock 数据原样迁移，数据结构不变）。
  * 说明：rank 取值与前端 src/router/enums.ts 保持一致，前端菜单按 rank 排序。
  */
 

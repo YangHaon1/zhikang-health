@@ -1,5 +1,5 @@
 // 健康数据批量导入的行校验规则（唯一源码）
-// ★ 后端（server/src/routes/health.ts 的 /api/health/records/import）与 mock（mock/health.ts）共用这一份，切勿双写。
+// ★ 后端（server/src/routes/health.ts 的 /api/health/records/import）与前端（@shared 别名）共用这一份，切勿双写。
 // 纯函数、禁 Node/DOM 依赖 —— 因此可同时被 Express 与浏览器加载。
 //
 // 注意：前端导入页（src/views/health/import/index.vue）的 `COLUMNS` 表头定义里有一份**同值**的上限表，

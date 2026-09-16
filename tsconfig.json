@@ -34,7 +34,6 @@
     ]
   },
   "include": [
-    "mock/*.ts",
     "build/*.ts",
     "src/**/*.ts",
     "src/**/*.tsx",

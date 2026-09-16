@@ -12,7 +12,6 @@ import { visualizer } from "rollup-plugin-visualizer";
 import removeConsole from "vite-plugin-remove-console";
 import VueI18nPlugin from "@intlify/unplugin-vue-i18n/vite";
 import { codeInspectorPlugin } from "code-inspector-plugin";
-import { vitePluginFakeServer } from "vite-plugin-fake-server";
 
 export async function getPluginsList(
   VITE_CDN: boolean,
@@ -50,13 +49,8 @@ export async function getPluginsList(
      * vite-plugin-router-warn只在开发环境下启用，只处理vue-router文件并且只在服务启动或重启时运行一次，性能消耗可忽略不计
      */
     removeNoMatch(),
-    // mock支持
-    vitePluginFakeServer({
-      logger: false,
-      include: "mock",
-      infixName: false,
-      enableProd: true
-    }),
+    // 说明（B9）：mock 目录与 vite-plugin-fake-server 已删除，全部接口由后端 Express 提供
+    // （dev 走 vite proxy /api → :3000，生产由 NODE_ENV=production 下的 Express 直接托管 dist）
     // svg组件化支持
     svgLoader(),
     // 自动按需加载图标

@@ -445,7 +445,7 @@ router.post("/health/records", authMiddleware, (req, res) => {
  * POST /api/health/records/import —— 批量导入（管理员 Excel 导入用）。
  *
  * 口径（二选一后取「全批校验通过才写」）：
- *  1. 逐行校验（规则见共享源码 `@shared/health-import`，与 mock/前端同一套上限）；
+ *  1. 逐行校验（规则见共享源码 `@shared/health-import`，与前端导入页同一套上限）；
  *  2. **若有任一行不合法，整批不落库**（`success: 0`），并在 `errors` 里给出行号与原因 —— 避免半份数据入库后难以分辨；
  *  3. 全部通过才在一个事务里写入，归属一律为当前登录用户（`user_id` 由服务端注入，入参无法指定）。
  * 行级校验失败返回 HTTP 200 + `errors[]`（不是 400）：前端 `http` 封装对非 2xx 直接 reject，

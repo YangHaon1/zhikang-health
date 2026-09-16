@@ -16,6 +16,8 @@ if (!jwtSecret) {
 
 export const env = {
   PORT: Number(process.env.PORT) || 3000,
+  /** 运行环境：production 时 Express 托管 dist/ 前端产物（见 src/index.ts） */
+  NODE_ENV: process.env.NODE_ENV ?? "development",
   /** 生产环境必须替换为足够长的随机串 */
   JWT_SECRET: jwtSecret || "zhikang-dev-only-insecure-secret",
   /** 方案 B 真实大模型 API Key，留空则仅走方案 A 规则引擎 */

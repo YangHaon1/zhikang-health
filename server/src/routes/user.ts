@@ -19,7 +19,7 @@ const router = Router();
  * 响应结构与改造前的 mock 完全一致，用户管理页调用点零改动。
  */
 
-// ---------- 角色（对齐 mock/system.ts 的 /list-all-role 返回值） ----------
+// ---------- 角色（对齐改造前 mock 的 /list-all-role 返回值，前端调用点零改动） ----------
 
 /** 前端角色下拉：id 为数字，name 为展示名 */
 const ROLE_OPTIONS = [
