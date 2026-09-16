@@ -14,6 +14,8 @@
     "preview": "vite preview",
     "preview:build": "pnpm build && vite preview",
     "typecheck": "vue-tsc --noEmit --skipLibCheck",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "svgo": "svgo -f . -r",
     "clean:cache": "rimraf .eslintcache && rimraf pnpm-lock.yaml && rimraf node_modules && pnpm store prune && pnpm install",
     "lint:eslint": "eslint --cache --max-warnings 0 src build --fix",
@@ -141,6 +143,7 @@
     "vite-plugin-remove-console": "^2.2.0",
     "vite-plugin-router-warn": "^2.0.0",
     "vite-svg-loader": "^5.1.1",
+    "vitest": "^5.0.1",
     "vue-eslint-parser": "^10.4.1",
     "vue-tsc": "^3.3.11"
   },
