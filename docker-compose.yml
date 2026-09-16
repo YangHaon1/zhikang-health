@@ -30,7 +30,15 @@ services:
       # SQLite 库与上传的头像都在这里：容器重建 / 升级镜像数据都不丢
       - ./server/data:/app/server/data
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3000/api/ping"]
+      # node:22-slim 里没有 wget/curl，健康检查用容器自带的 node http 请求：
+      # 200 → 退出码 0（healthy），其他状态码或请求失败 → 1（unhealthy）
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "require('http').get('http://127.0.0.1:3000/api/ping', r => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"
+        ]
       interval: 30s
       timeout: 5s
       retries: 3
