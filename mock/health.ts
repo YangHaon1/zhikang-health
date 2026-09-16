@@ -19,6 +19,7 @@ import {
   worseGrade
 } from "@shared/health-engine";
 import { buildReport as buildReportContent } from "@shared/health-report";
+import { validateImportRow } from "@shared/health-import";
 
 // ---------- 存储封装 ----------
 // dev 环境 fake-server 在 Node middleware 执行（无 localStorage）；
@@ -280,34 +281,7 @@ function chatAnswer(question: string, db: HealthDb): string {
   );
 }
 
-/** 导入行校验（服务端二次校验，返回错误文案，空串表示通过） */
-function validateImportRow(row: any): string {
-  if (!row || typeof row !== "object") return "行数据格式错误";
-  const date = row.date;
-  if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(String(date)))
-    return "日期必填且格式需为 yyyy-MM-dd";
-  const ranges: Array<[string, number]> = [
-    ["systolic", 300],
-    ["diastolic", 200],
-    ["fastingGlucose", 40],
-    ["postprandialGlucose", 40],
-    ["totalCholesterol", 20],
-    ["triglyceride", 20],
-    ["ldl", 20],
-    ["hdl", 20],
-    ["heartRate", 300],
-    ["bloodOxygen", 100],
-    ["weight", 300]
-  ];
-  for (const [key, max] of ranges) {
-    const v = row[key];
-    if (v == null || v === "") continue;
-    const num = Number(v);
-    if (isNaN(num) || num < 0 || num > max)
-      return `${key} 需为 0~${max} 之间的数字`;
-  }
-  return "";
-}
+// 导入行校验已迁到唯一源码 `@shared/health-import`（后端 /api/health/records/import 用的是同一份），见文件顶部 import。
 
 export default defineFakeRoute([
   // 读取个人档案

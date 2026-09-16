@@ -80,12 +80,15 @@ export const importHealthRecords = (data: { list: Array<any> }) => {
       total: number;
       errors: Array<{ row: number; message: string }>;
     }>
-  >("post", "/health/records/import", { data });
+  >("post", "/api/health/records/import", { data });
 };
 
 /** 导出健康记录（全量，供前端 xlsx 生成 Excel） */
 export const exportHealthRecords = () => {
-  return http.request<Result<HealthRecord[]>>("get", "/health/records/export");
+  return http.request<Result<HealthRecord[]>>(
+    "get",
+    "/api/health/records/export"
+  );
 };
 
 /** 一键生成 90 天演示数据 */

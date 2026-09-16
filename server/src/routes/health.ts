@@ -10,6 +10,7 @@ import type {
 // 报告模板同样只有一份源码，前后端共用（与 mock 的报告组装逻辑同一份）
 import { buildReport } from "../../shared/health-report.js";
 import type { RadarPoint, TrendPoint } from "../../shared/health-report.js";
+import { validateImportRow } from "../../shared/health-import.js";
 
 const router = Router();
 
@@ -304,13 +305,54 @@ function parseId(raw: unknown): number | null {
   return Number.isInteger(n) && n > 0 ? n : null;
 }
 
-/** GET /api/health/records —— 分页 + 可选日期范围，按 record_date 倒序 */
-router.get("/health/records", authMiddleware, (req, res) => {
-  const userId = req.user!.id;
-  const q = req.query as Record<string, string | undefined>;
-  const pageSize = Math.max(1, Math.trunc(toNumber(q.pageSize, 10)));
-  const currentPage = Math.max(1, Math.trunc(toNumber(q.currentPage, 1)));
+/**
+ * 记录入参 → 数据库列值（POST 新增与批量导入共用，保证两条写入路径口径一致）。
+ * 数字列非数字 → 返回错误文案；`remark` 是文本列；空值一律记 NULL（允许单次只测部分指标）。
+ */
+function buildRecordValues(
+  body: Record<string, unknown>,
+  userId: number,
+  date: string
+): { values: Record<string, unknown>; error?: string } {
+  const values: Record<string, unknown> = {
+    user_id: userId,
+    record_date: date
+  };
+  for (const [apiKey, column] of RECORD_FIELDS) {
+    if (apiKey === "date") continue;
+    if (apiKey === "remark") {
+      // 备注是文本列，不走数字校验
+      values[column] = toText(body[apiKey], "");
+      continue;
+    }
+    const v = toNumOrNull(body[apiKey]);
+    if (v === undefined) return { values, error: `字段 ${apiKey} 需为数字` };
+    values[column] = v;
+  }
+  return { values };
+}
 
+/** 插入列顺序与 `buildRecordValues` 的键顺序一致（user_id, record_date, 其余指标列） */
+const RECORD_INSERT_COLUMNS = [
+  "user_id",
+  "record_date",
+  ...RECORD_FIELDS.filter(([apiKey]) => apiKey !== "date").map(
+    ([, column]) => column
+  )
+];
+
+const RECORD_INSERT_SQL = `
+  INSERT INTO records (${RECORD_INSERT_COLUMNS.join(", ")})
+  VALUES (${RECORD_INSERT_COLUMNS.map(c => `@${c}`).join(", ")})`;
+
+/**
+ * 记录查询条件：归属 + 可选日期范围。
+ * 列表、导出共用同一份构造，保证两个接口的过滤口径不会漂移。
+ */
+function recordFilter(
+  userId: number,
+  q: Record<string, string | undefined>
+): { whereSql: string; params: Array<unknown> } {
   const where = ["user_id = ?"];
   const params: Array<unknown> = [userId];
   if (q.startDate) {
@@ -321,18 +363,27 @@ router.get("/health/records", authMiddleware, (req, res) => {
     where.push("record_date <= ?");
     params.push(q.endDate);
   }
-  const whereSql = `WHERE ${where.join(" AND ")}`;
+  return { whereSql: `WHERE ${where.join(" AND ")}`, params };
+}
+
+/** 记录列表排序：日期倒序，同日按 id 倒序（保证分页稳定） */
+const RECORD_ORDER = "ORDER BY record_date DESC, id DESC";
+
+/** GET /api/health/records —— 分页 + 可选日期范围，按 record_date 倒序 */
+router.get("/health/records", authMiddleware, (req, res) => {
+  const userId = req.user!.id;
+  const q = req.query as Record<string, string | undefined>;
+  const pageSize = Math.max(1, Math.trunc(toNumber(q.pageSize, 10)));
+  const currentPage = Math.max(1, Math.trunc(toNumber(q.currentPage, 1)));
+
+  const { whereSql, params } = recordFilter(userId, q);
 
   const { total } = db
     .prepare(`SELECT COUNT(*) AS total FROM records ${whereSql}`)
     .get(...params) as { total: number };
 
   const rows = db
-    .prepare(
-      `${RECORD_SELECT} ${whereSql}
-       ORDER BY record_date DESC, id DESC
-       LIMIT ? OFFSET ?`
-    )
+    .prepare(`${RECORD_SELECT} ${whereSql} ${RECORD_ORDER} LIMIT ? OFFSET ?`)
     .all(...params, pageSize, (currentPage - 1) * pageSize) as Array<RecordRow>;
 
   res.json({
@@ -347,6 +398,22 @@ router.get("/health/records", authMiddleware, (req, res) => {
   });
 });
 
+/**
+ * GET /api/health/records/export —— 全量导出（不分页、不截断）。
+ * 排序与字段口径与列表接口完全一致（`record_date DESC, id DESC` + 同一 `toRecord`），
+ * 前端拿到后自行用 xlsx 生成 Excel（与 mock 时期一致）。
+ */
+router.get("/health/records/export", authMiddleware, (req, res) => {
+  const q = req.query as Record<string, string | undefined>;
+  const { whereSql, params } = recordFilter(req.user!.id, q);
+
+  const rows = db
+    .prepare(`${RECORD_SELECT} ${whereSql} ${RECORD_ORDER}`)
+    .all(...params) as Array<RecordRow>;
+
+  res.json({ code: 0, message: "操作成功", data: rows.map(toRecord) });
+});
+
 /** POST /api/health/records —— 新增（record_date 必填，指标项可空） */
 router.post("/health/records", authMiddleware, (req, res) => {
   const userId = req.user!.id;
@@ -357,32 +424,78 @@ router.post("/health/records", authMiddleware, (req, res) => {
     return;
   }
 
-  const values: Record<string, unknown> = { user_id: userId };
-  for (const [apiKey, column] of RECORD_FIELDS) {
-    if (apiKey === "date") continue;
-    if (apiKey === "remark") {
-      // 备注是文本列，不走数字校验
-      values[column] = toText(body[apiKey], "");
-      continue;
-    }
-    const v = toNumOrNull(body[apiKey]);
-    if (v === undefined) {
-      res.status(400).json({ code: 40001, message: `字段 ${apiKey} 需为数字` });
-      return;
-    }
-    values[column] = v;
+  const { values, error } = buildRecordValues(body, userId, date);
+  if (error) {
+    res.status(400).json({ code: 40001, message: error });
+    return;
   }
 
-  const columns = ["user_id", "record_date", ...Object.keys(values).slice(1)];
-  const result = db
-    .prepare(
-      `INSERT INTO records (${columns.join(", ")})
-       VALUES (${columns.map(c => `@${c}`).join(", ")})`
-    )
-    .run({ ...values, record_date: date });
+  const result = db.prepare(RECORD_INSERT_SQL).run(values);
 
   const row = findRecord(Number(result.lastInsertRowid), userId);
   res.json({ code: 0, message: "操作成功", data: row ? toRecord(row) : null });
+});
+
+/**
+ * POST /api/health/records/import —— 批量导入（管理员 Excel 导入用）。
+ *
+ * 口径（二选一后取「全批校验通过才写」）：
+ *  1. 逐行校验（规则见共享源码 `@shared/health-import`，与 mock/前端同一套上限）；
+ *  2. **若有任一行不合法，整批不落库**（`success: 0`），并在 `errors` 里给出行号与原因 —— 避免半份数据入库后难以分辨；
+ *  3. 全部通过才在一个事务里写入，归属一律为当前登录用户（`user_id` 由服务端注入，入参无法指定）。
+ * 行级校验失败返回 HTTP 200 + `errors[]`（不是 400）：前端 `http` 封装对非 2xx 直接 reject，
+ * 而导入页只 `try/finally`，400 会让页面静默失败、连错误行都看不到。
+ * 请求体本身不合法（`list` 不是数组）才返回 400 40001，与 B3 的错误码口径一致。
+ */
+router.post("/health/records/import", authMiddleware, (req, res) => {
+  const userId = req.user!.id;
+  const body = (req.body ?? {}) as Record<string, unknown>;
+  const list = body.list;
+  if (!Array.isArray(list)) {
+    res.status(400).json({ code: 40001, message: "字段 list 需为数组" });
+    return;
+  }
+
+  const errors: Array<{ row: number; message: string }> = [];
+  const prepared: Array<Record<string, unknown>> = [];
+
+  list.forEach((raw, idx) => {
+    const rowNo = idx + 1;
+    const err = validateImportRow(raw);
+    if (err) {
+      errors.push({ row: rowNo, message: err });
+      return;
+    }
+    const row = raw as Record<string, unknown>;
+    const date = toText(row.date).trim();
+    const { values, error } = buildRecordValues(row, userId, date);
+    if (error) {
+      errors.push({ row: rowNo, message: error });
+      return;
+    }
+    prepared.push(values);
+  });
+
+  // 任一行不合法 → 整批不写
+  if (errors.length) {
+    res.json({
+      code: 0,
+      message: "操作成功",
+      data: { success: 0, fail: errors.length, total: list.length, errors }
+    });
+    return;
+  }
+
+  const insert = db.prepare(RECORD_INSERT_SQL);
+  db.transaction((rows: Array<Record<string, unknown>>) => {
+    for (const row of rows) insert.run(row);
+  })(prepared);
+
+  res.json({
+    code: 0,
+    message: "操作成功",
+    data: { success: prepared.length, fail: 0, total: list.length, errors: [] }
+  });
 });
 
 /** PUT /api/health/records/:id —— 只更新传入字段（校验归属） */
