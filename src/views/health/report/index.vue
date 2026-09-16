@@ -187,7 +187,11 @@ async function viewReport(summary: ReportSummary) {
 }
 
 // ---------- 导出 ----------
-function handleExportPdf() {
+/**
+ * 打印报告：走浏览器 `window.print()`（打印样式只保留报告区），
+ * 不是真正的 PDF 生成——按钮文案与之对齐，导出 PDF 由用户在打印对话框里选「另存为 PDF」。
+ */
+function handlePrintReport() {
   if (!report.value) {
     message("请先生成报告", { type: "warning" });
     return;
@@ -282,8 +286,12 @@ onBeforeUnmount(() => {
         <el-button type="primary" :loading="genLoading" @click="handleGenerate">
           生成报告
         </el-button>
-        <el-button :disabled="!report" @click="handleExportPdf">
-          导出 PDF
+        <el-button
+          :disabled="!report"
+          title="打开打印对话框（可选「另存为 PDF」）"
+          @click="handlePrintReport"
+        >
+          打印报告
         </el-button>
         <el-button @click="handleExportExcel">导出 Excel</el-button>
       </div>
