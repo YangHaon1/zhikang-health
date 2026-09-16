@@ -28,13 +28,9 @@ export default async ({ mode }: ConfigEnv): Promise<UserConfigExport> => {
         "/api": {
           target: "http://localhost:3000",
           changeOrigin: true
-        },
-        // AI 大模型（方案 B）：火山方舟，rewrite 去掉 /llm-api 前缀
-        "/llm-api": {
-          target: "https://ark.cn-beijing.volces.com",
-          changeOrigin: true,
-          rewrite: p => p.replace(/^\/llm-api/, "")
         }
+        // 说明（B6）：方案 B 的 AI 大模型改由后端直连（server/src/llm.ts，Key 在 server/.env），
+        // 前端不再持有 Key，原先的 /llm-api 代理已删除。
       },
       // 预热文件以提前转换和缓存结果，降低启动期间的初始页面加载时长并防止转换瀑布
       warmup: {

@@ -1,75 +1,34 @@
 <script setup lang="ts">
 import "deep-chat";
-import { onMounted, ref } from "vue";
+import { ref } from "vue";
 
 // AI 健康助手对话组件（保留 ChatGPT 风格皮肤）
 const chatRef = ref();
 
+// 会话历史由服务端恢复（父组件拉 /api/health/chat/history 后传入），组件挂载时即生效
+const props = defineProps<{
+  history?: Array<{ role: string; text: string }>;
+}>();
+
 // ---------- A/B 模式（页面加载时读取，运行时不做热切换） ----------
 const MODE_KEY = "health-ai-mode";
-const HISTORY_KEY = "health-chat-history";
-// 方案 B 目标：火山方舟豆包模型（OpenAI 兼容），待配置 VITE_LLM_API_KEY 实测
-const LLM_MODEL = "doubao-1-5-pro-32k-250115";
-const LLM_KEY = (import.meta.env.VITE_LLM_API_KEY as string) || "";
 
 const isLlm = localStorage.getItem(MODE_KEY) === "llm";
 
-// 请求目标：方案 A 规则引擎 /health/chat；方案 B 真实大模型 /llm-api（走 vite 代理）
-const connect = isLlm
-  ? {
-      url: "/llm-api/api/v3/chat/completions",
-      method: "POST",
-      headers: { Authorization: `Bearer ${LLM_KEY}` },
-      additionalBodyProps: { model: LLM_MODEL },
-      stream: false
-    }
-  : {
-      url: "/health/chat",
-      method: "POST",
-      stream: false
-    };
+// 两种模式都打同一个后端接口：方案 A 由服务端规则引擎作答，方案 B 由服务端代调大模型。
+// API Key 只在服务端（server/.env 的 LLM_API_KEY），前端不再持有任何 Key。
+const connect = {
+  url: "/api/health/chat",
+  method: "POST",
+  additionalBodyProps: { mode: isLlm ? "llm" : "rules" },
+  stream: false
+};
 
-// ---------- 对话历史（消息写入 localStorage，挂载时用 history 恢复） ----------
-function loadHistory(): Array<{ role: string; text: string }> {
-  try {
-    const raw = localStorage.getItem(HISTORY_KEY);
-    const arr = raw ? JSON.parse(raw) : [];
-    return Array.isArray(arr) ? arr : [];
-  } catch {
-    return [];
-  }
-}
-
-const history = loadHistory();
-
-function persist() {
-  const msgs = (chatRef.value?.getMessages?.() ?? [])
-    .map((m: any) => ({ role: m.role ?? "user", text: m.text ?? "" }))
-    .filter((m: { text: string }) => m.text)
-    .slice(-50); // 最多保留最近 50 条，避免无限增长
-  try {
-    localStorage.setItem(HISTORY_KEY, JSON.stringify(msgs));
-  } catch {
-    // 忽略存储异常
-  }
-}
-
-function handleMessage(body: { message: any; isHistory: boolean }) {
-  if (body.isHistory) return; // 恢复历史时不重复写入
-  persist();
-}
-
-onMounted(() => {
-  chatRef.value.onMessage = handleMessage;
-});
-
-// ---------- 响应解析：方案 A 返回 { code, data }；方案 B 返回 OpenAI { choices } ----------
+// ---------- 响应解析：服务端统一返回 { code, message, data: "<回答文本>" } ----------
 function responseInterceptor(response: any) {
   if (response && typeof response.data === "string") {
     return { text: response.data };
   }
-  const content = response?.choices?.[0]?.message?.content;
-  if (content) return { text: content };
   const err = response?.message || response?.error?.message;
   if (err) return { error: String(err) };
   return { text: "（未获取到有效回答）" };
@@ -162,7 +121,7 @@ function responseInterceptor(response: any) {
     :textInput="{
       placeholder: { text: '输入健康问题，例如：我最近血压怎么样' }
     }"
-    :history="history"
+    :history="props.history ?? []"
     :connect="connect"
     :responseInterceptor="responseInterceptor"
     :introMessage="{

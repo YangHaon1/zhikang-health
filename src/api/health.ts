@@ -91,6 +91,31 @@ export const exportHealthRecords = () => {
   );
 };
 
+/** AI 健康对话（A 规则引擎 / B 大模型，由服务端按 mode 分流） */
+export const sendHealthChat = (data: {
+  messages?: Array<{ role: string; content: string }>;
+  question?: string;
+  mode?: "rules" | "llm";
+}) => {
+  return http.request<Result<string>>("post", "/api/health/chat", { data });
+};
+
+/** 当前用户的对话历史（服务端存储，供对话页恢复会话） */
+export const getHealthChatHistory = () => {
+  return http.request<Result<Array<{ role: string; text: string }>>>(
+    "get",
+    "/api/health/chat/history"
+  );
+};
+
+/** 方案 B 可用性（Key 在服务端，前端只问「能不能用」，不下发 Key） */
+export const getHealthChatConfig = () => {
+  return http.request<Result<{ llmAvailable: boolean }>>(
+    "get",
+    "/api/health/chat/config"
+  );
+};
+
 /** 一键生成 90 天演示数据 */
 export const seedHealthRecords = () => {
   return http.request<Result<{ total: number }>>("post", "/health/seed");

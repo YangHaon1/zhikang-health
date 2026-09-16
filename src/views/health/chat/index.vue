@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { computed, ref } from "vue";
+import { computed, onMounted, ref } from "vue";
 import { message } from "@/utils/message";
+import { getHealthChatConfig, getHealthChatHistory } from "@/api/health";
 import { ChatGPT } from "./components";
 
 defineOptions({
@@ -10,13 +11,32 @@ defineOptions({
 // A/B 模式：rules（规则引擎，默认）/ llm（真实大模型）
 // 切换只写 localStorage，需刷新页面后才生效（deep-chat 连接目标在挂载时确定，不做运行时热切换）
 const MODE_KEY = "health-ai-mode";
-const LLM_KEY = (import.meta.env.VITE_LLM_API_KEY as string) || "";
 
 const mode = ref<"rules" | "llm">(
   localStorage.getItem(MODE_KEY) === "llm" ? "llm" : "rules"
 );
 
-const noKey = computed(() => mode.value === "llm" && !LLM_KEY);
+// 方案 B 的 Key 在服务端，前端只能问「能不能用」；未配置时给出降级提示
+const llmAvailable = ref(true);
+const noKey = computed(() => mode.value === "llm" && !llmAvailable.value);
+
+// 会话历史存服务端（chat_history 表）：换浏览器、重启服务后仍能恢复
+const history = ref<Array<{ role: string; text: string }>>([]);
+const loaded = ref(false);
+
+onMounted(async () => {
+  try {
+    const [cfg, his] = await Promise.all([
+      getHealthChatConfig(),
+      getHealthChatHistory()
+    ]);
+    if (cfg?.code === 0 && cfg.data) llmAvailable.value = cfg.data.llmAvailable;
+    if (his?.code === 0 && Array.isArray(his.data)) history.value = his.data;
+  } finally {
+    // 拉取失败也放行渲染，不阻断对话
+    loaded.value = true;
+  }
+});
 
 function handleModeChange(next: string | number | boolean) {
   const value = (next as string) === "llm" ? "llm" : "rules";
@@ -52,10 +72,10 @@ function handleModeChange(next: string | number | boolean) {
       type="warning"
       :closable="false"
       show-icon
-      title="尚未配置 API Key（.env.local 的 VITE_LLM_API_KEY），「AI 大模型」待 Key 实测，建议先使用「规则引擎」模式"
+      title="服务端尚未配置大模型 API Key（server/.env 的 LLM_API_KEY），「AI 大模型」暂不可用，建议先使用「规则引擎」模式"
       class="mb-3"
     />
 
-    <ChatGPT />
+    <ChatGPT v-if="loaded" :history="history" />
   </el-card>
 </template>

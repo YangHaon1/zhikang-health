@@ -19,5 +19,9 @@ export const env = {
   /** 生产环境必须替换为足够长的随机串 */
   JWT_SECRET: jwtSecret || "zhikang-dev-only-insecure-secret",
   /** 方案 B 真实大模型 API Key，留空则仅走方案 A 规则引擎 */
-  LLM_API_KEY: process.env.LLM_API_KEY || ""
+  LLM_API_KEY: (process.env.LLM_API_KEY ?? "").trim(),
+  /** 方案 B 模型名与网关地址（可留空走默认值：火山方舟豆包） */
+  LLM_MODEL: process.env.LLM_MODEL || "doubao-1-5-pro-32k-250115",
+  LLM_BASE_URL:
+    process.env.LLM_BASE_URL || "https://ark.cn-beijing.volces.com/api/v3"
 };

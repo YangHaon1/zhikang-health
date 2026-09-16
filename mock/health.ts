@@ -6,20 +6,11 @@ import type {
   HealthReport,
   ReportSummary
 } from "@/types/health";
-import {
-  analyzeHealth,
-  gradeSystolic,
-  gradeDiastolic,
-  gradeFastingGlucose,
-  gradeTotalCholesterol,
-  gradeTriglyceride,
-  gradeLdl,
-  gradeHdl,
-  gradeBmi,
-  worseGrade
-} from "@shared/health-engine";
+// 单项分级函数随对话逻辑一起迁到了 @shared/health-chat，这里只需 analyzeHealth
+import { analyzeHealth } from "@shared/health-engine";
 import { buildReport as buildReportContent } from "@shared/health-report";
 import { validateImportRow } from "@shared/health-import";
+import { chatAnswer } from "@shared/health-chat";
 
 // ---------- 存储封装 ----------
 // dev 环境 fake-server 在 Node middleware 执行（无 localStorage）；
@@ -102,185 +93,7 @@ function buildReport(
   };
 }
 
-// ---------- AI 健康对话（方案 A 内核）：关键词意图匹配 → 查数据 → 规则引擎 → 自然语言回答 ----------
-
-/** 取最近一条含指定字段的记录 */
-function latestWith(
-  records: HealthRecord[],
-  field: keyof HealthRecord
-): HealthRecord | null {
-  return (
-    [...records]
-      .sort((a, b) => (a.date < b.date ? 1 : -1))
-      .find(r => r[field] != null) ?? null
-  );
-}
-
-/** 最近 n 条记录（按日期倒序） */
-function recentRecords(records: HealthRecord[], n: number): HealthRecord[] {
-  return [...records].sort((a, b) => (a.date < b.date ? 1 : -1)).slice(0, n);
-}
-
-/** 单条记录一行摘要 */
-function briefOf(r: HealthRecord): string {
-  const parts: string[] = [];
-  if (r.systolic != null || r.diastolic != null)
-    parts.push(`血压 ${r.systolic ?? "—"}/${r.diastolic ?? "—"}`);
-  if (r.fastingGlucose != null) parts.push(`空腹血糖 ${r.fastingGlucose}`);
-  if (r.weight != null) parts.push(`体重 ${r.weight}kg`);
-  return parts.join("；");
-}
-
-/** 组装自然语言回答（已注入档案 + 最近 5 条记录作为上下文） */
-function chatAnswer(question: string, db: HealthDb): string {
-  const { profile, records, reports } = db;
-  const q = (question ?? "").trim();
-  const analyze = records.length ? analyzeHealth(records, profile) : null;
-  const recent5 = recentRecords(records, 5);
-  const latest = recent5[0];
-
-  if (!q) return "请问有什么可以帮您？";
-
-  if (!profile && !records.length) {
-    return "您好，我是智康健康助手。您还没有完善个人档案和健康记录，建议先到「我的健康」填写档案，再到「指标录入」添加指标，我就能为您解读血压、血糖、血脂并评估健康风险了。";
-  }
-
-  // 血压
-  if (/血压|收缩压|舒张压|高压|低压/.test(q)) {
-    const r =
-      latestWith(records, "systolic") ?? latestWith(records, "diastolic");
-    if (!r)
-      return "您还没有血压记录，请先到「指标录入」添加一条血压数据，我就能帮您解读了。";
-    const s = r.systolic != null ? `${r.systolic}` : "未测";
-    const d = r.diastolic != null ? `${r.diastolic}` : "未测";
-    const gs = r.systolic != null ? gradeSystolic(r.systolic) : null;
-    const gd = r.diastolic != null ? gradeDiastolic(r.diastolic) : null;
-    const worse = worseGrade(gs, gd);
-    const list = recent5
-      .filter(x => x.systolic != null || x.diastolic != null)
-      .map(x => `${x.date}：${x.systolic ?? "—"}/${x.diastolic ?? "—"}`)
-      .join("；");
-    return (
-      `您最近一次血压记录（${r.date}）为 ${s}/${d} mmHg，${worse.grade}（${worse.desc}）。` +
-      (list ? ` 近 5 次：${list}。` : "") +
-      " 建议：低盐饮食（每日 <5g）、戒烟限酒、规律运动，并每日定时监测血压。"
-    );
-  }
-
-  // 血糖
-  if (/血糖|糖尿病|空腹|餐后/.test(q)) {
-    const r =
-      latestWith(records, "fastingGlucose") ??
-      latestWith(records, "postprandialGlucose");
-    if (!r) return "您还没有血糖记录，请先到「指标录入」添加血糖数据。";
-    const list = recent5
-      .filter(x => x.fastingGlucose != null)
-      .map(x => `${x.date}：空腹 ${x.fastingGlucose}`)
-      .join("；");
-    const head =
-      r.fastingGlucose != null
-        ? `您最近一次空腹血糖（${r.date}）为 ${r.fastingGlucose} mmol/L，${
-            gradeFastingGlucose(r.fastingGlucose).grade
-          }（${gradeFastingGlucose(r.fastingGlucose).desc}）。`
-        : `您最近一次血糖记录（${r.date}）餐后血糖为 ${r.postprandialGlucose} mmol/L。`;
-    return (
-      head +
-      (list ? ` 近 5 次空腹血糖：${list}。` : "") +
-      " 建议：控制精制碳水与含糖饮料，规律运动，持续监测空腹与餐后血糖。"
-    );
-  }
-
-  // 血脂
-  if (/血脂|胆固醇|甘油三酯|低密度|高密度|ldl|hdl/i.test(q)) {
-    const r =
-      latestWith(records, "totalCholesterol") ??
-      latestWith(records, "triglyceride") ??
-      latestWith(records, "ldl") ??
-      latestWith(records, "hdl");
-    if (!r)
-      return "您还没有血脂记录，请先到「指标录入」添加血脂数据（总胆固醇/甘油三酯/低密度/高密度）。";
-    const parts: string[] = [];
-    if (r.totalCholesterol != null) {
-      const g = gradeTotalCholesterol(r.totalCholesterol);
-      parts.push(`总胆固醇 ${r.totalCholesterol}（${g.grade}）`);
-    }
-    if (r.triglyceride != null) {
-      const g = gradeTriglyceride(r.triglyceride);
-      parts.push(`甘油三酯 ${r.triglyceride}（${g.grade}）`);
-    }
-    if (r.ldl != null) {
-      const g = gradeLdl(r.ldl);
-      parts.push(`低密度脂蛋白 ${r.ldl}（${g.grade}）`);
-    }
-    if (r.hdl != null) {
-      const g = gradeHdl(r.hdl, profile?.gender ?? 1);
-      parts.push(`高密度脂蛋白 ${r.hdl}（${g.grade}）`);
-    }
-    return (
-      `您最近一次血脂记录（${r.date}）：${parts.join("；")}。` +
-      " 建议：低脂低胆固醇饮食，增加膳食纤维，戒烟限酒，必要时就医。"
-    );
-  }
-
-  // BMI / 体重
-  if (/bmi|体重|身高|胖|瘦|肥胖/i.test(q)) {
-    const height = profile?.height;
-    const weight = latest?.weight ?? profile?.weight;
-    if (!height || !weight)
-      return "计算 BMI 需要身高与体重，请先到「我的健康」完善档案，或在「指标录入」记录体重。";
-    const bmi = gradeBmi(height, weight);
-    return `您当前的 BMI 为 ${bmi.value}（${bmi.grade}，${bmi.desc}），标准范围 18.5~23.9。建议：均衡饮食 + 规律运动，维持健康体重。`;
-  }
-
-  // 报告
-  if (/报告/.test(q)) {
-    const rep = reports[0];
-    if (rep)
-      return `您最近一份健康报告（${rep.period}）综合评分 ${rep.score} 分，风险等级「${rep.level}」。可到「健康报告」页面查看完整内容。`;
-    return "您还没有生成过健康报告，可到「健康报告」页面选择时间段生成一份。";
-  }
-
-  // 记录
-  if (/记录|历史|数据|趋势|情况/.test(q)) {
-    if (!records.length) return "您还没有健康记录，请先到「指标录入」添加。";
-    const brief = recent5.map(x => `${x.date}：${briefOf(x)}`).join("；");
-    return `您共有 ${records.length} 条健康记录，最近 ${recent5.length} 条如下：${brief}。`;
-  }
-
-  // 综合风险 / 评分 / 评估
-  if (analyze && /风险|评分|评估|怎么样|状态/.test(q)) {
-    const parts = [
-      `根据您的档案与最近记录，综合风险等级为「${analyze.level}」，评分 ${analyze.score} 分（满分 100）。`
-    ];
-    if (analyze.risks.length)
-      parts.push(`风险点：${analyze.risks.join("、")}。`);
-    if (analyze.suggestions.length)
-      parts.push(`建议：${analyze.suggestions.slice(0, 3).join(" ")}`);
-    if (analyze.medicalAdvice) parts.push(`就医提醒：${analyze.medicalAdvice}`);
-    return parts.join("");
-  }
-
-  // 档案
-  if (/档案|个人信息|我的信息|姓名|年龄|性别|吸烟|饮酒|运动/.test(q)) {
-    if (!profile) return "您还没有完善个人档案，请到「我的健康」填写。";
-    return (
-      `您的健康档案：${profile.name}，${profile.age} 岁，${
-        profile.gender === 1 ? "男" : "女"
-      }，身高 ${profile.height}cm，体重 ${profile.weight}kg。` +
-      `吸烟：${profile.smoking}，饮酒：${profile.drinking}，运动：${profile.exercise}。`
-    );
-  }
-
-  // 无意图命中：通用建议 + 引导
-  const head = analyze
-    ? `您最近一次综合评估风险等级为「${analyze.level}」、评分 ${analyze.score} 分。`
-    : "保持均衡饮食、规律运动、定期体检是维护健康的基础。";
-  return (
-    head +
-    " 我暂时无法精确理解您的问题，您可以这样问我：「我最近血压怎么样」「我的血糖正常吗」「评估一下健康风险」「查看最近记录」「解读我的报告」。"
-  );
-}
-
+// 对话意图匹配已迁到唯一源码 `@shared/health-chat`（后端 POST /api/health/chat 用的是同一份）。
 // 导入行校验已迁到唯一源码 `@shared/health-import`（后端 /api/health/records/import 用的是同一份），见文件顶部 import。
 
 export default defineFakeRoute([
@@ -475,6 +288,7 @@ export default defineFakeRoute([
         (body?.question as string) ??
         "";
       return ok(chatAnswer(String(question), db));
+      // 注：mock 侧对话无持久化（内存 db 无 chat_history）；服务端已落库，B9 删 mock 后走 /api
     }
   },
   // 一键生成 90 天演示数据（含 2~3 个异常指标，便于演示 AI 分析价值）

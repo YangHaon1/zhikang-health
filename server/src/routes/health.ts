@@ -11,6 +11,10 @@ import type {
 import { buildReport } from "../../shared/health-report.js";
 import type { RadarPoint, TrendPoint } from "../../shared/health-report.js";
 import { validateImportRow } from "../../shared/health-import.js";
+// 对话意图匹配同样只有一份源码（方案 A 内核）
+import { chatAnswer } from "../../shared/health-chat.js";
+import type { ChatReportSummary } from "../../shared/health-chat.js";
+import { callLlm, llmAvailable } from "../llm.js";
 
 const router = Router();
 
@@ -808,6 +812,151 @@ router.get("/health/report/:id", authMiddleware, (req, res) => {
     return;
   }
   res.json({ code: 0, message: "操作成功", data: toReport(row) });
+});
+
+// ---------- AI 健康对话：方案 A 规则引擎 / 方案 B 大模型，对话记录落 chat_history ----------
+
+/** 对话历史返回给前端的最大条数（按最近若干轮，够恢复会话即可） */
+const CHAT_HISTORY_LIMIT = 50;
+
+/** 「报告」意图只需要摘要三件套（与 mock 的 reports[0] 用法等价） */
+function recentReportSummaries(userId: number): Array<ChatReportSummary> {
+  const rows = db
+    .prepare(
+      `SELECT period_start, period_end, score, level FROM reports
+       WHERE user_id = ? ORDER BY id DESC LIMIT 5`
+    )
+    .all(userId) as Array<{
+    period_start: string | null;
+    period_end: string | null;
+    score: number | null;
+    level: string | null;
+  }>;
+  return rows.map(r => ({
+    period: periodOf(r.period_start, r.period_end),
+    score: toNumber(r.score),
+    level: r.level ?? ""
+  }));
+}
+
+interface ChatRow {
+  role: string;
+  content: string;
+  create_time: string | null;
+}
+
+/** 落一条对话记录（role: 'user' | 'assistant'） */
+const insertChat = db.prepare(
+  `INSERT INTO chat_history (user_id, role, content, create_time)
+   VALUES (?, ?, ?, datetime('now','localtime'))`
+);
+
+/** 从入参里取本轮提问：兼容 deep-chat 的 {messages:[{role,content}]} 与直接传 {question} */
+function extractQuestion(body: Record<string, unknown>): string {
+  const messages = body.messages;
+  if (Array.isArray(messages)) {
+    const last = [...messages]
+      .reverse()
+      .find(
+        (m: { role?: string; content?: unknown }) =>
+          m?.role === "user" && typeof m.content === "string"
+      );
+    if (last) return String((last as { content: string }).content);
+  }
+  return toText(body.question);
+}
+
+/** 把入参里的历史消息整理成大模型可用的格式（只保留 user/assistant，最多最近 10 条） */
+function extractLlmMessages(
+  body: Record<string, unknown>
+): Array<{ role: "user" | "assistant"; content: string }> {
+  const messages = Array.isArray(body.messages) ? body.messages : [];
+  return messages
+    .filter(
+      (m: { role?: string; content?: unknown }) =>
+        (m?.role === "user" || m?.role === "assistant") &&
+        typeof m.content === "string" &&
+        m.content.trim()
+    )
+    .slice(-10)
+    .map((m: { role: string; content: string }) => ({
+      role: m.role as "user" | "assistant",
+      content: m.content
+    }));
+}
+
+/**
+ * GET /api/health/chat/config —— 方案 B 可用性（Key 在服务端，前端只能问「能不能用」）。
+ * 前端用它决定是否展示「未配置 Key」的降级提示，Key 本身永不下发。
+ */
+router.get("/health/chat/config", authMiddleware, (_req, res) => {
+  res.json({
+    code: 0,
+    message: "操作成功",
+    data: { llmAvailable: llmAvailable() }
+  });
+});
+
+/**
+ * GET /api/health/chat/history —— 当前用户的对话历史（按时间正序，供前端恢复会话）。
+ * 服务端存储：换浏览器/重启服务后仍能恢复（方案 B6 的持久化要求）。
+ */
+router.get("/health/chat/history", authMiddleware, (req, res) => {
+  const rows = db
+    .prepare(
+      `SELECT role, content, create_time FROM chat_history
+       WHERE user_id = ? ORDER BY id DESC LIMIT ?`
+    )
+    .all(req.user!.id, CHAT_HISTORY_LIMIT) as Array<ChatRow>;
+
+  res.json({
+    code: 0,
+    message: "操作成功",
+    data: rows.reverse().map(r => ({
+      role: r.role === "assistant" ? "ai" : "user",
+      text: r.content
+    }))
+  });
+});
+
+/**
+ * POST /api/health/chat —— 对话（方案 A 规则引擎 / 方案 B 大模型）。
+ *
+ * 入参：`{ messages: [{role, content}] }`（deep-chat 默认格式）或 `{ question }`，可选 `{ mode: "llm" | "rules" }`。
+ * 出参统一 `{ code: 0, data: "<回答文本>" }`（A/B 两路同构，前端 responseInterceptor 一套解析）。
+ * 本轮提问与回答**成对**写入 chat_history（归属当前用户）；若按 `messages` 传了完整历史，
+ * 只落最新一条 user 消息，避免重复入库。
+ */
+router.post("/health/chat", authMiddleware, async (req, res) => {
+  const userId = req.user!.id;
+  const body = (req.body ?? {}) as Record<string, unknown>;
+  const question = extractQuestion(body).trim();
+  const useLlm = toText(body.mode) === "llm";
+
+  if (!question) {
+    res.json({ code: 0, message: "操作成功", data: "请问有什么可以帮您？" });
+    return;
+  }
+
+  let answer: string;
+  if (useLlm) {
+    const result = await callLlm(extractLlmMessages(body));
+    answer = result.text;
+  } else {
+    answer = chatAnswer(question, {
+      profile: profileForEngine(userId),
+      records: recordsForEngine(userId),
+      reports: recentReportSummaries(userId)
+    });
+  }
+
+  // 用户提问与回答成对落库（同一事务，避免只落了半轮）
+  db.transaction(() => {
+    insertChat.run(userId, "user", question);
+    insertChat.run(userId, "assistant", answer);
+  })();
+
+  res.json({ code: 0, message: "操作成功", data: answer });
 });
 
 export default router;
