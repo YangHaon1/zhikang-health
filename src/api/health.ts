@@ -83,21 +83,16 @@ export const importHealthRecords = (data: { list: Array<any> }) => {
   >("post", "/api/health/records/import", { data });
 };
 
-/** 导出健康记录（全量，供前端 xlsx 生成 Excel） */
-export const exportHealthRecords = () => {
+/** 导出健康记录（全量、不分页，供前端 xlsx 生成 Excel；支持日期范围筛选） */
+export const exportHealthRecords = (data?: {
+  startDate?: string;
+  endDate?: string;
+}) => {
   return http.request<Result<HealthRecord[]>>(
     "get",
-    "/api/health/records/export"
+    "/api/health/records/export",
+    { params: data }
   );
-};
-
-/** AI 健康对话（A 规则引擎 / B 大模型，由服务端按 mode 分流） */
-export const sendHealthChat = (data: {
-  messages?: Array<{ role: string; content: string }>;
-  question?: string;
-  mode?: "rules" | "llm";
-}) => {
-  return http.request<Result<string>>("post", "/api/health/chat", { data });
 };
 
 /** 当前用户的对话历史（服务端存储，供对话页恢复会话） */

@@ -6,7 +6,8 @@ import { utils, writeFile } from "xlsx";
 import {
   getHealthRecords,
   updateHealthRecord,
-  deleteHealthRecord
+  deleteHealthRecord,
+  exportHealthRecords
 } from "@/api/health";
 import type { HealthRecord } from "@/types/health";
 import type { FormInstance } from "element-plus";
@@ -65,15 +66,13 @@ function handleReset() {
   loadData();
 }
 
-/** 按当前时间范围导出 Excel（备份/展示） */
+/** 按当前时间范围导出 Excel（备份/展示）：走全量导出接口，不分页不截断 */
 async function handleExport() {
-  const { code, data } = await getHealthRecords({
+  const { code, data } = await exportHealthRecords({
     startDate: dateRange.value?.[0],
-    endDate: dateRange.value?.[1],
-    currentPage: 1,
-    pageSize: 100000
+    endDate: dateRange.value?.[1]
   });
-  if (code !== 0 || !data?.list?.length) {
+  if (code !== 0 || !data?.length) {
     message("该时间范围内暂无数据可导出", { type: "warning" });
     return;
   }
@@ -92,7 +91,7 @@ async function handleExport() {
     "体重(kg)",
     "备注"
   ];
-  const rows = data.list.map(r => [
+  const rows = data.map(r => [
     r.date,
     r.systolic ?? "",
     r.diastolic ?? "",
