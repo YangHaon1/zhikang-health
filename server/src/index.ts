@@ -1,5 +1,5 @@
 // 必须放在最前：先加载 server/.env，后续模块才能读到 JWT_SECRET 等环境变量
-import { env } from "./env.js";
+import { env, checkEnv } from "./env.js";
 import express from "express";
 import { existsSync } from "node:fs";
 import path from "node:path";
@@ -11,6 +11,9 @@ import userRouter from "./routes/user.js";
 
 const app = express();
 const port = env.PORT;
+
+// 关键环境变量校验（JWT_SECRET 弱密钥告警、PORT 非法值回退）——只告警不阻断启动
+checkEnv();
 
 // 数据目录（server/data 与 server/data/uploads），首次启动自动创建
 ensureDirs();
