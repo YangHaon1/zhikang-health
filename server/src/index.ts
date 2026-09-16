@@ -5,6 +5,7 @@ import { existsSync } from "node:fs";
 import path from "node:path";
 import { initDb } from "./db.js";
 import { ensureDirs, uploadsDir } from "./paths.js";
+import { logger } from "./logger.js";
 import authRouter from "./routes/auth.js";
 import healthRouter from "./routes/health/index.js";
 import userRouter from "./routes/user.js";
@@ -61,8 +62,8 @@ if (serveFrontend) {
 }
 
 app.listen(port, () => {
-  console.log(`zhikang server listening on http://localhost:${port}`);
-  console.log(
+  logger.info(`zhikang server listening on http://localhost:${port}`);
+  logger.info(
     serveFrontend
       ? `[prod] 已托管前端产物：${distDir}`
       : "[dev] 未托管 dist/，前端请走 vite dev(8848)"

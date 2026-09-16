@@ -3,6 +3,7 @@
 // 因此这里显式指定 server/.env 路径。server/.env 不入库，由 .env.example 复制生成。
 import dotenv from "dotenv";
 import path from "node:path";
+import { logger } from "./logger.js";
 
 dotenv.config({ path: path.resolve(import.meta.dirname, "../.env") });
 
@@ -57,7 +58,7 @@ export function checkEnv(): void {
     const reason = jwtSecret
       ? `当前值为占位/模板值 "${jwtSecret}"`
       : "当前未配置（server/.env 缺失或未填 JWT_SECRET）";
-    console.warn(
+    logger.warn(
       [
         "",
         "⚠️  ============ 安全告警：JWT_SECRET 未设置为随机密钥 ============",
@@ -73,6 +74,6 @@ export function checkEnv(): void {
   }
 
   if (resolvedPort.error) {
-    console.warn(`[env] ${resolvedPort.error}`);
+    logger.warn(`[env] ${resolvedPort.error}`);
   }
 }

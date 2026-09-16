@@ -2,6 +2,7 @@
 // 关键点：API Key 只存在服务端（server/.env 的 LLM_API_KEY），前端不再持有任何 Key；
 // 前端只发 mode=llm，由这里决定用不用、用哪个模型。无 Key 时不抛错，返回可展示的降级文案。
 import { env } from "./env.js";
+import { logger } from "./logger.js";
 
 /** 系统提示词：把助手的回答约束在健康管理语境，并声明它不是医生 */
 const SYSTEM_PROMPT =
@@ -59,7 +60,7 @@ export async function callLlm(messages: Array<LlmMessage>): Promise<LlmResult> {
 
     if (!resp.ok) {
       const detail = (await resp.text()).slice(0, 200);
-      console.warn(`[llm] 上游返回 ${resp.status}：${detail}`);
+      logger.warn(`[llm] 上游返回 ${resp.status}：${detail}`);
       return {
         ok: false,
         text: `大模型服务暂时不可用（HTTP ${resp.status}），已保留您的问题，请稍后重试或改用「规则引擎」模式。`
@@ -79,7 +80,7 @@ export async function callLlm(messages: Array<LlmMessage>): Promise<LlmResult> {
     return { ok: true, text: content };
   } catch (err) {
     const aborted = err instanceof Error && err.name === "AbortError";
-    console.warn(`[llm] 调用失败：${(err as Error)?.message}`);
+    logger.warn(`[llm] 调用失败：${(err as Error)?.message}`);
     return {
       ok: false,
       text: aborted

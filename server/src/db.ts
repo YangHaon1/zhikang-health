@@ -2,6 +2,7 @@ import Database from "better-sqlite3";
 import path from "node:path";
 import bcrypt from "bcrypt";
 import { dataDir, ensureDirs } from "./paths.js";
+import { logger } from "./logger.js";
 
 // 数据目录：server/data/zhikang.db（已在 .gitignore 中排除，不入库）
 ensureDirs();
@@ -127,7 +128,7 @@ function migrateUsers(): void {
     added.push(name);
   }
   if (!added.length) return;
-  console.log(`[db] users 表补列：${added.join(", ")}`);
+  logger.info(`[db] users 表补列：${added.join(", ")}`);
 
   // dept_id 刚补出来时全为默认值 0，给两个演示账号回填部门。
   // 只在补列这一次执行，后续以库内值为准（管理员改过的部门不会被覆盖）。
@@ -163,7 +164,7 @@ function migrateProfiles(): void {
     db.exec(`ALTER TABLE profiles ADD COLUMN ${name} ${ddl}`);
     added.push(name);
   }
-  if (added.length) console.log(`[db] profiles 表补列：${added.join(", ")}`);
+  if (added.length) logger.info(`[db] profiles 表补列：${added.join(", ")}`);
 }
 
 /** 种子账号：admin/admin123（管理员）、common/common123（普通用户），密码 bcrypt 哈希入库 */
