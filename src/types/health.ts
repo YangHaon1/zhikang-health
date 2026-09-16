@@ -1,64 +1,6 @@
-/** 健康档案 */
-export type HealthProfile = {
-  /** 姓名 */
-  name: string;
-  /** 性别：0 女 / 1 男 */
-  gender: number;
-  /** 年龄（岁） */
-  age: number;
-  /** 身高（cm） */
-  height: number;
-  /** 体重（kg） */
-  weight: number;
-  /** 腰围（cm） */
-  waistline: number;
-  /** 既往病史 */
-  medicalHistory: string;
-  /** 家族史 */
-  familyHistory: string;
-  /** 过敏史 */
-  allergyHistory: string;
-  /** 吸烟习惯 */
-  smoking: string;
-  /** 饮酒习惯 */
-  drinking: string;
-  /** 运动频率 */
-  exercise: string;
-  /** 创建时间 */
-  createTime: string;
-};
-
-/** 健康记录（单项指标可选，允许单次只测部分指标） */
-export type HealthRecord = {
-  /** 记录 id */
-  id: string;
-  /** 记录日期（yyyy-MM-dd） */
-  date: string;
-  /** 收缩压（mmHg） */
-  systolic?: number;
-  /** 舒张压（mmHg） */
-  diastolic?: number;
-  /** 空腹血糖（mmol/L） */
-  fastingGlucose?: number;
-  /** 餐后血糖（mmol/L） */
-  postprandialGlucose?: number;
-  /** 总胆固醇（mmol/L） */
-  totalCholesterol?: number;
-  /** 甘油三酯（mmol/L） */
-  triglyceride?: number;
-  /** 低密度脂蛋白 LDL（mmol/L） */
-  ldl?: number;
-  /** 高密度脂蛋白 HDL（mmol/L） */
-  hdl?: number;
-  /** 心率（次/分） */
-  heartRate?: number;
-  /** 血氧（%） */
-  bloodOxygen?: number;
-  /** 体重（kg） */
-  weight?: number;
-  /** 备注 */
-  remark?: string;
-};
+// 档案与记录的类型定义已随规则引擎迁到唯一源码 `server/shared/health-engine.ts`（前后端共用一份），
+// 这里 re-export 是为了保持前端既有导入路径 `@/types/health` 不变。
+export type { HealthProfile, HealthRecord } from "@shared/health-engine";
 
 /** 指标风险点（雷达图用） */
 export type RadarPoint = {

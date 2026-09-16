@@ -38,7 +38,9 @@ const pathResolve = (dir = ".", metaUrl = import.meta.url) => {
 /** 设置别名 */
 const alias: Record<string, string> = {
   "@": pathResolve("../src"),
-  "@build": pathResolve()
+  "@build": pathResolve(),
+  // 规则引擎唯一源码（前后端共用，纯函数、无 Node/DOM 依赖）
+  "@shared": pathResolve("../server/shared")
 };
 
 /** 平台的名称、版本、运行所需的`node`和`pnpm`版本、依赖、最后构建时间的类型提示 */

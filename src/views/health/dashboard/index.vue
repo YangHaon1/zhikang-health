@@ -9,7 +9,7 @@ import {
   getHealthRecords,
   seedHealthRecords
 } from "@/api/health";
-import { analyzeHealth, worseGrade } from "@/utils/health-engine";
+import { analyzeHealth, worseGrade } from "@shared/health-engine";
 import type { HealthProfile, HealthRecord } from "@/types/health";
 import echarts from "@/plugins/echarts";
 

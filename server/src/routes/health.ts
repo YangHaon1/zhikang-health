@@ -1,6 +1,12 @@
 import { Router } from "express";
 import db from "../db.js";
 import { authMiddleware } from "../middleware/auth.js";
+// 规则引擎唯一源码（与前端共用同一份，纯函数），后端只做数据映射 + 隔离，不重复实现评分
+import { analyzeHealth } from "../../shared/health-engine.js";
+import type {
+  HealthProfile,
+  HealthRecord
+} from "../../shared/health-engine.js";
 
 const router = Router();
 
@@ -289,8 +295,8 @@ function findRecord(id: number, userId: number): RecordRow | undefined {
     .get(id, userId) as RecordRow | undefined;
 }
 
-/** 路径参数 → 记录 id（非正整数返回 null，调用方 404） */
-function parseId(raw: string): number | null {
+/** 路径参数 → 记录 id（非正整数返回 null，调用方 404；Express 5 的 params 值可能是数组，故收 unknown） */
+function parseId(raw: unknown): number | null {
   const n = Number(raw);
   return Number.isInteger(n) && n > 0 ? n : null;
 }
@@ -446,6 +452,109 @@ router.delete("/health/records/:id", authMiddleware, (req, res) => {
     userId
   );
   res.json({ code: 0, message: "操作成功", data: null });
+});
+
+// ---------- 实时分级（规则引擎） ----------
+
+/** 读取当前用户档案 → 引擎入参（与 API 同口径：camelCase + 中文枚举 + gender 0/1） */
+function profileForEngine(userId: number): HealthProfile | null {
+  const row = findProfile(userId);
+  return row ? toProfile(row) : null;
+}
+
+/**
+ * 读取当前用户记录 → 引擎入参。
+ * 引擎以 `!= null` 判定「未测」，故 DB 的 null 可直接透传（响应 JSON 也因此保持 B3 原样）。
+ */
+function recordsForEngine(userId: number): HealthRecord[] {
+  const rows = db
+    .prepare(
+      `${RECORD_SELECT} WHERE user_id = ? ORDER BY record_date DESC, id DESC`
+    )
+    .all(userId) as RecordRow[];
+  return rows.map(row => ({ ...toRecord(row) }) as unknown as HealthRecord);
+}
+
+/**
+ * POST /api/health/analyze —— 实时分级：一次返回评分 / 等级 / 分项分级 / 风险点 / 建议。
+ *
+ * 入参（均可省略，省略时读当前用户库内最新数据 —— 档案或记录一改，这里立刻反映）：
+ *   记录数组 | { records?: HealthRecord[], profile?: HealthProfile | null }
+ * 隔离：任何入参都改不了查询范围，缺省数据一律取自 `req.user.id`，无法越权读他人数据。
+ */
+router.post("/health/analyze", authMiddleware, (req, res) => {
+  const userId = req.user!.id;
+  const raw: unknown = req.body;
+  const payload =
+    raw && typeof raw === "object" && !Array.isArray(raw)
+      ? (raw as Record<string, unknown>)
+      : null;
+
+  // 与 mock 一致：支持「记录数组」或「{ records }」两种写法
+  const rawRecords = Array.isArray(raw) ? raw : payload?.records;
+  if (rawRecords !== undefined && !Array.isArray(rawRecords)) {
+    res.status(400).json({ code: 40001, message: "字段 records 需为数组" });
+    return;
+  }
+
+  const records =
+    rawRecords === undefined
+      ? recordsForEngine(userId)
+      : (rawRecords as unknown as HealthRecord[]);
+
+  const profile =
+    payload && "profile" in payload
+      ? ((payload.profile ?? null) as HealthProfile | null)
+      : profileForEngine(userId);
+
+  res.json({
+    code: 0,
+    message: "操作成功",
+    data: analyzeHealth(records, profile)
+  });
+});
+
+// ---------- 报告历史（B4 与实时分级同批切换；生成接口仍在 mock，B5 迁） ----------
+
+interface ReportRow {
+  id: number;
+  period_start: string | null;
+  period_end: string | null;
+  score: number | null;
+  level: string | null;
+  create_time: string | null;
+}
+
+/** DB 本地时间字符串（datetime('now','localtime')）→ ISO，前端 `new Date()` 可直接解析 */
+function toIso(local: string | null): string {
+  if (!local) return "";
+  const d = new Date(local.replace(" ", "T"));
+  return Number.isNaN(d.getTime()) ? local : d.toISOString();
+}
+
+/** GET /api/health/report/history —— 当前用户的报告摘要列表（按生成时间倒序） */
+router.get("/health/report/history", authMiddleware, (req, res) => {
+  const rows = db
+    .prepare(
+      `SELECT id, period_start, period_end, score, level, create_time
+       FROM reports WHERE user_id = ? ORDER BY create_time DESC, id DESC`
+    )
+    .all(req.user!.id) as ReportRow[];
+
+  res.json({
+    code: 0,
+    message: "操作成功",
+    data: rows.map(row => ({
+      id: String(row.id),
+      generateTime: toIso(row.create_time),
+      period:
+        row.period_start && row.period_end
+          ? `${row.period_start} ~ ${row.period_end}`
+          : "全部记录",
+      score: toNumber(row.score),
+      level: row.level ?? ""
+    }))
+  });
 });
 
 export default router;

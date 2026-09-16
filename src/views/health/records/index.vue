@@ -3,7 +3,7 @@ import { ref, reactive, computed, onMounted } from "vue";
 import { message } from "@/utils/message";
 import { addHealthRecord, getHealthProfile } from "@/api/health";
 import type { HealthProfile, HealthRecord } from "@/types/health";
-import type { IndicatorGrade } from "@/utils/health-engine";
+import type { IndicatorGrade } from "@shared/health-engine";
 import {
   gradeSystolic,
   gradeDiastolic,
@@ -13,7 +13,7 @@ import {
   gradeLdl,
   gradeHdl,
   gradeBmi
-} from "@/utils/health-engine";
+} from "@shared/health-engine";
 import type { FormInstance } from "element-plus";
 
 defineOptions({

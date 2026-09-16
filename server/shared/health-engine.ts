@@ -1,7 +1,72 @@
 // 风险评估规则引擎（AI 方案 A 内核）
-// 纯函数、禁 Node/DOM 依赖 —— mock 与前端共用这一份，切勿双写。
+// ★ 唯一源码：后端（server/src/routes/health.ts）与前端（录入页实时分级、首页总览）共用这一份，切勿双写。
+// 纯函数、禁 Node/DOM 依赖 —— 因此可同时被 Express 与浏览器加载。
 // 分级规则采用中国成人标准，常量集中在顶部，调整阈值只需改这里。
-import type { HealthProfile, HealthRecord } from "@/types/health";
+//
+// 入参口径：与 API 层一致（camelCase + 中文生活方式枚举 + gender 0 女/1 男），
+// 后端由 routes/health.ts 的映射表把 DB 整数枚举转成这个口径后再喂给引擎。
+
+/** 健康档案（与前端 `src/types/health.ts` 的 HealthProfile 同源，前端直接 re-export 本类型） */
+export interface HealthProfile {
+  /** 姓名 */
+  name: string;
+  /** 性别：0 女 / 1 男 */
+  gender: number;
+  /** 年龄（岁） */
+  age: number;
+  /** 身高（cm） */
+  height: number;
+  /** 体重（kg） */
+  weight: number;
+  /** 腰围（cm） */
+  waistline: number;
+  /** 既往病史 */
+  medicalHistory: string;
+  /** 家族史 */
+  familyHistory: string;
+  /** 过敏史 */
+  allergyHistory: string;
+  /** 吸烟习惯 */
+  smoking: string;
+  /** 饮酒习惯 */
+  drinking: string;
+  /** 运动频率 */
+  exercise: string;
+  /** 创建时间 */
+  createTime: string;
+}
+
+/** 健康记录（单项指标可选，允许单次只测部分指标） */
+export interface HealthRecord {
+  /** 记录 id */
+  id: string;
+  /** 记录日期（yyyy-MM-dd） */
+  date: string;
+  /** 收缩压（mmHg） */
+  systolic?: number;
+  /** 舒张压（mmHg） */
+  diastolic?: number;
+  /** 空腹血糖（mmol/L） */
+  fastingGlucose?: number;
+  /** 餐后血糖（mmol/L） */
+  postprandialGlucose?: number;
+  /** 总胆固醇（mmol/L） */
+  totalCholesterol?: number;
+  /** 甘油三酯（mmol/L） */
+  triglyceride?: number;
+  /** 低密度脂蛋白 LDL（mmol/L） */
+  ldl?: number;
+  /** 高密度脂蛋白 HDL（mmol/L） */
+  hdl?: number;
+  /** 心率（次/分） */
+  heartRate?: number;
+  /** 血氧（%） */
+  bloodOxygen?: number;
+  /** 体重（kg） */
+  weight?: number;
+  /** 备注 */
+  remark?: string;
+}
 
 /** 单项分级等级：0 正常 / 1 警戒 / 2 异常 */
 export type GradeLevel = 0 | 1 | 2;
@@ -349,7 +414,7 @@ export function analyzeHealth(
         : null,
     bmi:
       profile?.height && (latest?.weight ?? profile?.weight)
-        ? (gradeBmi(profile.height, latest.weight ?? profile.weight)?.level ??
+        ? (gradeBmi(profile.height, latest?.weight ?? profile.weight)?.level ??
           null)
         : null,
     totalCholesterol:

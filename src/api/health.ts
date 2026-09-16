@@ -105,7 +105,10 @@ export const generateHealthReport = (data?: {
 
 /** 报告历史摘要列表 */
 export const getHealthReportHistory = () => {
-  return http.request<Result<ReportSummary[]>>("get", "/health/report/history");
+  return http.request<Result<ReportSummary[]>>(
+    "get",
+    "/api/health/report/history"
+  );
 };
 
 /** 查看某份报告 */

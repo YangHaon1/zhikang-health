@@ -17,7 +17,7 @@ import {
   gradeHdl,
   gradeBmi,
   worseGrade
-} from "@/utils/health-engine";
+} from "@shared/health-engine";
 
 // ---------- 存储封装 ----------
 // dev 环境 fake-server 在 Node middleware 执行（无 localStorage）；

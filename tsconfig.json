@@ -21,7 +21,8 @@
     "lib": ["ESNext", "DOM"],
     "paths": {
       "@/*": ["./src/*"],
-      "@build/*": ["./build/*"]
+      "@build/*": ["./build/*"],
+      "@shared/*": ["./server/shared/*"]
     },
     "types": [
       "node",
@@ -38,6 +39,7 @@
     "src/**/*.ts",
     "src/**/*.tsx",
     "src/**/*.vue",
+    "server/shared/**/*.ts",
     "types/*.d.ts",
     "vite.config.ts"
   ],
