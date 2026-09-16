@@ -98,9 +98,11 @@ export const generateHealthReport = (data?: {
   startDate?: string;
   endDate?: string;
 }) => {
-  return http.request<Result<HealthReport>>("post", "/health/report/generate", {
-    data
-  });
+  return http.request<Result<HealthReport>>(
+    "post",
+    "/api/health/report/generate",
+    { data }
+  );
 };
 
 /** 报告历史摘要列表 */
@@ -113,5 +115,5 @@ export const getHealthReportHistory = () => {
 
 /** 查看某份报告 */
 export const getHealthReport = (id: string) => {
-  return http.request<Result<HealthReport>>("get", `/health/report/${id}`);
+  return http.request<Result<HealthReport>>("get", `/api/health/report/${id}`);
 };

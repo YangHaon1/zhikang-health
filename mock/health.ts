@@ -18,6 +18,7 @@ import {
   gradeBmi,
   worseGrade
 } from "@shared/health-engine";
+import { buildReport as buildReportContent } from "@shared/health-report";
 
 // ---------- 存储封装 ----------
 // dev 环境 fake-server 在 Node middleware 执行（无 localStorage）；
@@ -83,73 +84,20 @@ function ok(data: unknown) {
   return { code: 0, message: "操作成功", data };
 }
 
-/** 风险等级 → 总体评价结尾文案 */
-const LEVEL_SUMMARY: Record<string, string> = {
-  低: "各项指标总体平稳，请继续保持健康的生活方式。",
-  中: "部分指标处于警戒或异常，建议关注并调整生活方式。",
-  高: "多项指标异常，风险较高，建议尽快就医评估并积极干预。",
-  极高: "多项指标显著异常，风险极高，请立即就医接受专业诊治。"
-};
-
-/** 组装健康报告：调规则引擎 → 模板化拼接自然语言报告 */
+/**
+ * 组装健康报告：报告模板已迁到唯一源码 `@shared/health-report`（后端 `/api/health/report/generate` 用的是同一份），
+ * 这里只补 id 与生成时间这两个「存储层事实」。
+ */
 function buildReport(
   records: HealthRecord[],
   profile: HealthProfile | null,
   startDate: string,
   endDate: string
 ): HealthReport {
-  const { score, level, items, risks, suggestions, medicalAdvice } =
-    analyzeHealth(records, profile);
-
-  // 总体评价
-  const abnormalCount = items.filter(i => i.level === 2).length;
-  const warnCount = items.filter(i => i.level === 1).length;
-  let summary = `本次评估综合评分为 ${score} 分，风险等级为「${level}」。`;
-  summary += items.length
-    ? ` 共分析 ${items.length} 项指标，其中 ${abnormalCount} 项异常、${warnCount} 项警戒。`
-    : " 该时间段内暂无健康指标记录。";
-  summary += LEVEL_SUMMARY[level] ?? "";
-
-  // 各指标逐项分析
-  const itemAnalysis = items.map(
-    it => `${it.name} ${it.value}：${it.grade}（${it.desc}）。`
-  );
-
-  // 雷达图数据：等级折算为风险值（正常 0 / 警戒 50 / 异常 100）
-  const radar = items.map(it => ({
-    name: it.name,
-    value: it.level === 2 ? 100 : it.level === 1 ? 50 : 0
-  }));
-
-  // 近 10 次趋势（按日期升序取最近 N 次）
-  const trend = [...records]
-    .sort((a, b) => (a.date < b.date ? -1 : 1))
-    .slice(-10)
-    .map(r => ({
-      date: r.date,
-      systolic: r.systolic,
-      diastolic: r.diastolic,
-      fastingGlucose: r.fastingGlucose
-    }));
-
-  const period =
-    startDate && endDate ? `${startDate} ~ ${endDate}` : "全部记录";
-
   return {
+    ...buildReportContent(records, profile, startDate, endDate),
     id: genId(),
-    generateTime: new Date().toISOString(),
-    period,
-    startDate,
-    endDate,
-    score,
-    level,
-    summary,
-    itemAnalysis,
-    risks,
-    suggestions,
-    medicalAdvice,
-    radar,
-    trend
+    generateTime: new Date().toISOString()
   };
 }
 
