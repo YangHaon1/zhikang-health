@@ -643,12 +643,14 @@ sec("4. 健康档案 /api/health/profile");
 
 sec("5. 指标记录 /api/health/records（增删改查 + 隔离 + 导入导出）");
 let adminRecordId = null;
+// 本条记录用于「字段完整性」断言，用日期把它与库内既有数据隔开（见下面的双重定位）
+const CREATED_DATE = "2026-09-15";
 let exportLen = 0;
 {
   const created = await api("POST", "/api/health/records", {
     token: T.admin,
     body: {
-      date: "2026-09-15",
+      date: CREATED_DATE,
       systolic: 128,
       diastolic: 82,
       fastingGlucose: 5.6,
@@ -696,14 +698,25 @@ let exportLen = 0;
     list.status === 200 && Array.isArray(arr) && Number(ld.total) >= 1,
     `status=${list.status} total=${ld.total}`
   );
+  // 只断言「本脚本刚建的那条记录」的字段完整性：列表默认按日期倒序，
+  // 库里若已有演示/历史数据（如今天的一键演示数据），arr[0] 未必是刚建的这条。
+  // 用「创建日期 + id」双重定位，保证与库内既有数据无关。
+  const mineList = await api(
+    "GET",
+    `/api/health/records?currentPage=1&pageSize=50&startDate=${CREATED_DATE}&endDate=${CREATED_DATE}`,
+    { token: T.admin }
+  );
+  const mine = (j(mineList).data?.list ?? []).find(
+    r => String(r.id) === String(adminRecordId)
+  );
   check(
     "记录字段完整（systolic/diastolic/fastingGlucose/ldl）",
-    arr[0] &&
-      arr[0].systolic != null &&
-      arr[0].diastolic != null &&
-      arr[0].fastingGlucose != null &&
-      arr[0].ldl != null,
-    JSON.stringify(arr[0] ?? {}).slice(0, 200)
+    mine &&
+      mine.systolic != null &&
+      mine.diastolic != null &&
+      mine.fastingGlucose != null &&
+      mine.ldl != null,
+    JSON.stringify(mine ?? {})
   );
 
   // 日期范围筛选用一个「演示数据永远不会生成」的历史日期，保证断言与库内既有数据无关
@@ -1023,15 +1036,17 @@ let reportId = null;
       harr.some(r => String(r.id) === String(reportId)),
     `status=${hist.status} len=${harr.length}`
   );
+  // 同上：只断言「本脚本刚生成的这份报告」，避免历史里既有的报告排在第一行
+  const mineReport = harr.find(r => String(r.id) === String(reportId));
   check(
     "报告历史项含 id/period/score/level/generateTime",
-    harr[0] &&
-      harr[0].id != null &&
-      harr[0].period != null &&
-      harr[0].score != null &&
-      harr[0].level &&
-      harr[0].generateTime,
-    JSON.stringify(harr[0] ?? {}).slice(0, 200)
+    mineReport &&
+      mineReport.id != null &&
+      mineReport.period != null &&
+      mineReport.score != null &&
+      mineReport.level &&
+      mineReport.generateTime,
+    JSON.stringify(mineReport ?? harr[0] ?? {}).slice(0, 200)
   );
 
   const detail = await api("GET", `/api/health/report/${reportId}`, {
