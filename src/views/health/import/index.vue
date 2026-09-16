@@ -165,6 +165,8 @@ const fileName = ref("");
 const parsedRows = ref<ParsedRow[]>([]);
 const importing = ref(false);
 const seeding = ref(false);
+/** 服务端返回的行级错误（已换算成 Excel 行号），无错误时为空、不展示 */
+const importErrors = ref<Array<{ row: number; message: string }>>([]);
 
 const validRows = computed(() =>
   parsedRows.value.filter(r => r.record).map(r => r.record!)
@@ -222,6 +224,7 @@ async function handleFileChange(uploadFile: any) {
     const { errors, record } = validateRow(row);
     return { rowNo: idx + 2, cells: row.map(cellText), errors, record };
   });
+  importErrors.value = []; // 换了新文件，上一批的服务端错误明细不再适用
 
   const errCount = parsedRows.value.filter(r => r.errors.length).length;
   if (errCount) {
@@ -269,13 +272,20 @@ async function handleImport() {
   }
   importing.value = true;
   try {
+    // 只提交校验通过的行；保留其 Excel 行号，用于把服务端错误行号换算回文件里的真实行号
+    const submitted = parsedRows.value.filter(r => r.record);
     const { code, data } = await importHealthRecords({
-      list: validRows.value
+      list: submitted.map(r => r.record!)
     });
     if (code === 0 && data) {
+      // 服务端逐行校验若判定失败会整批不落库，此处把「第几行 + 原因」原样抛给用户
+      importErrors.value = (data.errors ?? []).map(e => ({
+        row: submitted[e.row - 1]?.rowNo ?? e.row,
+        message: e.message
+      }));
       const tip = `导入完成：成功 ${data.success} 条，失败 ${data.fail} 条`;
       message(tip, { type: data.fail ? "warning" : "success" });
-      // 清空预览，可继续上传下一批
+      // 清空预览，可继续上传下一批（错误明细留在上方提示里）
       parsedRows.value = [];
       fileName.value = "";
     } else {
@@ -319,6 +329,26 @@ async function handleImport() {
         title="支持 .xlsx/.xls，文件 ≤2MB 且 ≤5000 行；先下载模板，填入数据后上传，错误行将标红且不会被导入"
         class="mb-3"
       />
+
+      <!-- 服务端行级校验失败明细（整批未入库时给出具体行号与原因） -->
+      <el-alert
+        v-if="importErrors.length"
+        type="warning"
+        show-icon
+        :closable="true"
+        class="mb-3"
+        @close="importErrors = []"
+      >
+        <template #title>
+          本次导入未写入任何数据，以下
+          {{ importErrors.length }} 行未通过服务端校验：
+        </template>
+        <ul class="import-error-list">
+          <li v-for="err in importErrors" :key="`${err.row}-${err.message}`">
+            第 {{ err.row }} 行：{{ err.message }}
+          </li>
+        </ul>
+      </el-alert>
 
       <!-- 校验结果预览 -->
       <template v-if="parsedRows.length">
@@ -395,5 +425,12 @@ async function handleImport() {
 :deep(.import-error-row td) {
   color: var(--el-color-danger);
   background-color: var(--el-color-danger-light-9);
+}
+
+.import-error-list {
+  padding-left: 18px;
+  margin: 4px 0 0;
+  line-height: 1.8;
+  list-style: disc;
 }
 </style>
