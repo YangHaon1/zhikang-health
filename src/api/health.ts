@@ -118,7 +118,7 @@ export const getHealthChatConfig = () => {
 
 /** 一键生成 90 天演示数据 */
 export const seedHealthRecords = () => {
-  return http.request<Result<{ total: number }>>("post", "/health/seed");
+  return http.request<Result<{ total: number }>>("post", "/api/health/seed");
 };
 
 /** 生成健康风险报告（入参时间段） */

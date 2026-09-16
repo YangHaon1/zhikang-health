@@ -11,6 +11,7 @@ import { analyzeHealth } from "@shared/health-engine";
 import { buildReport as buildReportContent } from "@shared/health-report";
 import { validateImportRow } from "@shared/health-import";
 import { chatAnswer } from "@shared/health-chat";
+import { buildDemoRecords, DEMO_PROFILE } from "@shared/health-seed";
 
 // ---------- 存储封装 ----------
 // dev 环境 fake-server 在 Node middleware 执行（无 localStorage）；
@@ -64,12 +65,7 @@ function genId(): string {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
-/** 本地日期 yyyy-MM-dd（避免 toISOString 的 UTC 偏移导致跨天） */
-function fmtLocalDate(d: Date): string {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(
-    d.getDate()
-  ).padStart(2, "0")}`;
-}
+// 本地日期格式化的那张表随演示数据生成器一起迁到了 `@shared/health-seed`（B7）。
 
 /** 成功响应 */
 function ok(data: unknown) {
@@ -297,82 +293,10 @@ export default defineFakeRoute([
     method: "post",
     response: () => {
       const db = loadDb();
-      const records: HealthRecord[] = [];
-      const today = new Date();
-      // 演示档案：45 岁男性、身高 172cm、体重 78kg（BMI≈26.4 超重），
-      // 吸烟/饮酒偶尔、几乎不运动 —— 让规则引擎能产出 BMI 分级与生活方式风险
+      // 生成规则已迁到唯一源码 `@shared/health-seed`（后端 /api/health/seed 用的是同一份）
+      const records = buildDemoRecords();
       if (!db.profile) {
-        db.profile = {
-          name: "演示用户",
-          gender: 1,
-          age: 45,
-          height: 172,
-          weight: 78,
-          waistline: 88,
-          medicalHistory: "无",
-          familyHistory: "父亲有高血压史",
-          allergyHistory: "无",
-          smoking: "偶尔",
-          drinking: "偶尔",
-          exercise: "几乎不运动",
-          createTime: today.toISOString()
-        };
-      }
-      // 最近 12 天为「异常演示段」，其余为「正常段」，
-      // 让趋势图呈现「近期恶化」、报告能命中多项风险点
-      for (let i = 89; i >= 0; i--) {
-        const d = new Date(today);
-        d.setDate(d.getDate() - i);
-        const abnormal = i < 12;
-        records.push({
-          id: genId(),
-          date: fmtLocalDate(d),
-          // 血压：正常段 116~132/73~84，异常段 150~165/90~100（一/二级高血压）
-          systolic: abnormal
-            ? 150 + Math.round(Math.random() * 15)
-            : 116 + Math.round(Math.random() * 16),
-          diastolic: abnormal
-            ? 90 + Math.round(Math.random() * 10)
-            : 73 + Math.round(Math.random() * 11),
-          // 空腹血糖：异常段 7.0~7.6（疑似糖尿病）
-          fastingGlucose: Number(
-            (abnormal
-              ? 7.0 + Math.random() * 0.6
-              : 4.6 + Math.random() * 1.3
-            ).toFixed(1)
-          ),
-          postprandialGlucose: Number(
-            (abnormal
-              ? 8.2 + Math.random() * 1.6
-              : 6.3 + Math.random() * 1.6
-            ).toFixed(1)
-          ),
-          totalCholesterol: Number(
-            (abnormal
-              ? 5.4 + Math.random() * 1.0
-              : 4.1 + Math.random() * 1.2
-            ).toFixed(1)
-          ),
-          triglyceride: Number(
-            (abnormal
-              ? 1.8 + Math.random() * 0.8
-              : 1.0 + Math.random() * 0.7
-            ).toFixed(1)
-          ),
-          // LDL：异常段 4.1~4.5（升高）
-          ldl: Number(
-            (abnormal
-              ? 4.1 + Math.random() * 0.4
-              : 2.3 + Math.random() * 1.0
-            ).toFixed(1)
-          ),
-          hdl: Number((1.0 + Math.random() * 0.4).toFixed(1)),
-          heartRate: 68 + Math.round(Math.random() * 16),
-          bloodOxygen: 96 + Math.round(Math.random() * 3),
-          // 体重：正常段 74 缓升至 78，异常段维持 78
-          weight: Number((abnormal ? 78 : 74 + (89 - i) * 0.045).toFixed(1)),
-          remark: abnormal && i < 3 ? "近期加班多、睡眠不足" : ""
-        });
+        db.profile = { ...DEMO_PROFILE, createTime: new Date().toISOString() };
       }
       db.records = records;
       saveDb(db);
