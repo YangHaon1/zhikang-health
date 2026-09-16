@@ -57,8 +57,13 @@ export function useUser(tableRef: Ref, treeRef: Ref) {
   async function callApi(request: Promise<any>): Promise<ApiResult> {
     try {
       return await request;
-    } catch {
-      return { code: -1, message: "请求失败：无权限或服务异常" };
+    } catch (error: any) {
+      // 非 2xx 时 axios 直接 reject：优先透出服务端 message（如「图片不能超过 2MB」「无权限访问」）
+      const status = error?.response?.status;
+      return {
+        code: status ?? -1,
+        message: error?.response?.data?.message || "请求失败：无权限或服务异常"
+      };
     }
   }
 

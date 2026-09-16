@@ -367,13 +367,21 @@ router.post("/dept", authMiddleware, adminOnly, deptList);
 
 // ---------- 头像上传 ----------
 
+/** 头像大小上限 2MB：前端裁剪后的头像远小于此，超出基本是选错了文件 */
+const MAX_AVATAR_SIZE = 2 * 1024 * 1024;
+
 /**
  * 内存存储 + 魔数识别：前端 `createFormData` 把裁剪结果包成 `new File([blob], "avatar")`，
  * 既没有扩展名、mime 也可能是空串，所以不看客户端给的类型，只认文件内容的前几个字节。
+ *
+ * 关于 multer 的 `fileFilter`：**这里用不了** —— multer 在 `storage._handleFile` 之前调用
+ * `fileFilter`，此时 `file.buffer` 还是空的（memoryStorage 尚未收数据），拿不到内容做魔数校验；
+ * 而 `file.mimetype` 对本项目的真实上传恒为空串，按它过滤会把正常头像一起拒掉。
+ * 因此「只允许 png/jpg/gif/webp」改为在路由里按内容判定（见 `imageExt`），同样返回 HTTP 400。
  */
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 5 * 1024 * 1024 }
+  limits: { fileSize: MAX_AVATAR_SIZE }
 });
 
 /** 图片魔数 → 扩展名（只接受常见图片格式，其他一律拒绝） */
@@ -404,9 +412,10 @@ function handleUpload(req: any, res: any, next: any): void {
       return;
     }
     const code = (err as { code?: string }).code;
-    res.json({
+    // 超限 / 传输异常统一 400（此前返回 200 + code 40001，客户端无法据此提示）
+    res.status(400).json({
       code: 40001,
-      message: code === "LIMIT_FILE_SIZE" ? "图片不能超过 5MB" : "上传失败"
+      message: code === "LIMIT_FILE_SIZE" ? "图片不能超过 2MB" : "上传失败"
     });
   });
 }
@@ -415,12 +424,16 @@ router.post("/upload", authMiddleware, handleUpload, (req: any, res: any) => {
   const file = (req.files ?? [])[0] as
     { buffer: Buffer; size: number } | undefined;
   if (!file) {
-    res.json({ code: 40001, message: "请选择要上传的图片" });
+    res.status(400).json({ code: 40001, message: "请选择要上传的图片" });
     return;
   }
+  // 类型只认文件内容（png/jpg/gif/webp），不看客户端 mime/扩展名
   const ext = imageExt(file.buffer);
   if (!ext) {
-    res.json({ code: 40001, message: "仅支持 png / jpg / gif / webp 图片" });
+    res.status(400).json({
+      code: 40001,
+      message: "仅支持 png / jpg / gif / webp 图片"
+    });
     return;
   }
 

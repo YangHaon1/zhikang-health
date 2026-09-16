@@ -88,7 +88,10 @@ const handleSubmitImage = () => {
       }
     })
     .catch(error => {
-      message(`提交异常 ${error}`, { type: "error" });
+      // 服务端 400（图片超 2MB / 非 png-jpg-gif-webp）会带 message，优先展示它
+      message(error?.response?.data?.message || `提交异常 ${error}`, {
+        type: "error"
+      });
     });
 };
 
