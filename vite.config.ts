@@ -25,6 +25,10 @@ export default async ({ mode }: ConfigEnv): Promise<UserConfigExport> => {
       host: "0.0.0.0",
       // 本地跨域代理 https://cn.vitejs.dev/config/server-options.html#server-proxy
       proxy: {
+        "/api": {
+          target: "http://localhost:3000",
+          changeOrigin: true
+        },
         // AI 大模型（方案 B）：火山方舟，rewrite 去掉 /llm-api 前缀
         "/llm-api": {
           target: "https://ark.cn-beijing.volces.com",
