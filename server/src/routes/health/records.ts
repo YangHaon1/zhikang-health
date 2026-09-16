@@ -238,4 +238,37 @@ router.delete("/health/records/:id", authMiddleware, (req, res) => {
   res.json({ code: 0, message: "操作成功", data: null });
 });
 
+/**
+ * DELETE /api/health/records —— 批量删除（P1-7）。
+ *
+ * 入参 `{ ids: string[] }`（记录 id 数组）。只删当前用户的记录（`user_id = ?` 条件内，
+ * 混入他人 id 会被忽略，防越权），不存在/已删除的 id 静默跳过（幂等）。
+ * 返回实际删除条数 `{ deleted: n }`。
+ */
+router.delete("/health/records", authMiddleware, (req, res) => {
+  const userId = req.user!.id;
+  const body = (req.body ?? {}) as Record<string, unknown>;
+  const ids = body.ids;
+  if (!Array.isArray(ids)) {
+    res.status(400).json({ code: 40001, message: "字段 ids 需为数组" });
+    return;
+  }
+  const numeric = ids.map(parseId).filter((id): id is number => id !== null);
+  if (!numeric.length) {
+    res.status(400).json({ code: 40001, message: "字段 ids 需为非空数组" });
+    return;
+  }
+  const placeholders = numeric.map(() => "?").join(", ");
+  const result = db
+    .prepare(
+      `DELETE FROM records WHERE user_id = ? AND id IN (${placeholders})`
+    )
+    .run(userId, ...numeric);
+  res.json({
+    code: 0,
+    message: "操作成功",
+    data: { deleted: result.changes }
+  });
+});
+
 export default router;

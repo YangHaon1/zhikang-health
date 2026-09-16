@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, reactive, onMounted } from "vue";
+import { ref, reactive, computed, onMounted } from "vue";
 import { message } from "@/utils/message";
 import { ElMessageBox } from "element-plus";
 import { utils, writeFile } from "xlsx";
@@ -7,6 +7,7 @@ import {
   getHealthRecords,
   updateHealthRecord,
   deleteHealthRecord,
+  deleteHealthRecords,
   exportHealthRecords
 } from "@/api/health";
 import type { HealthRecord } from "@/types/health";
@@ -136,6 +137,32 @@ async function handleDelete(row: any) {
   }
 }
 
+/** 批量删除（P1-7）：勾选行 → 确认 → 批量接口（只删当前用户数据） */
+const selectedRows = ref<HealthRecord[]>([]);
+const selectedIds = computed(() => selectedRows.value.map(r => r.id));
+
+function handleSelectionChange(rows: HealthRecord[]) {
+  selectedRows.value = rows;
+}
+
+async function handleBatchDelete() {
+  if (!selectedIds.value.length) {
+    message("请先勾选要删除的记录", { type: "warning" });
+    return;
+  }
+  await ElMessageBox.confirm(
+    `确定删除选中的 ${selectedIds.value.length} 条记录吗？删除后无法恢复。`,
+    "批量删除",
+    { type: "warning", confirmButtonText: "删除", cancelButtonText: "取消" }
+  );
+  const { code, data } = await deleteHealthRecords(selectedIds.value);
+  if (code === 0) {
+    message(`已删除 ${data?.deleted ?? 0} 条记录`, { type: "success" });
+    selectedRows.value = [];
+    loadData();
+  }
+}
+
 async function handleEditSave(formEl: FormInstance | undefined) {
   if (!formEl) return;
   await formEl.validate(async valid => {
@@ -177,12 +204,29 @@ onMounted(() => {
             />
             <el-button type="primary" @click="handleSearch">查询</el-button>
             <el-button @click="handleReset">重置</el-button>
+            <el-button
+              type="danger"
+              plain
+              :disabled="!selectedIds.length"
+              @click="handleBatchDelete"
+            >
+              批量删除{{
+                selectedIds.length ? `（${selectedIds.length}）` : ""
+              }}
+            </el-button>
             <el-button @click="handleExport">导出 Excel</el-button>
           </div>
         </div>
       </template>
 
-      <el-table v-loading="loading" :data="list" border stripe>
+      <el-table
+        v-loading="loading"
+        :data="list"
+        border
+        stripe
+        @selection-change="handleSelectionChange"
+      >
+        <el-table-column type="selection" width="48" />
         <el-table-column prop="date" label="日期" width="120" />
         <el-table-column label="血压(mmHg)" width="140">
           <template #default="{ row }">

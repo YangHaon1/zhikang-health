@@ -71,6 +71,15 @@ export const deleteHealthRecord = (id: string) => {
   return http.request<Result<null>>("delete", `/api/health/records/${id}`);
 };
 
+/** 批量删除健康记录（P1-7；只删当前用户数据，返回实际删除条数） */
+export const deleteHealthRecords = (ids: string[]) => {
+  return http.request<Result<{ deleted: number }>>(
+    "delete",
+    "/api/health/records",
+    { data: { ids } }
+  );
+};
+
 /** 批量导入健康记录（返回成功/失败计数与行级错误明细） */
 export const importHealthRecords = (data: { list: Array<any> }) => {
   return http.request<
