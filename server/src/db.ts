@@ -84,6 +84,8 @@ export function initDb(): void {
       create_time   TEXT DEFAULT (datetime('now','localtime'))
     );
 
+    CREATE INDEX IF NOT EXISTS idx_reports_user_time ON reports(user_id, create_time DESC);
+
     -- 对话历史
     CREATE TABLE IF NOT EXISTS chat_history (
       id          INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -92,6 +94,8 @@ export function initDb(): void {
       content     TEXT NOT NULL,
       create_time TEXT DEFAULT (datetime('now','localtime'))
     );
+
+    CREATE INDEX IF NOT EXISTS idx_chat_user_time ON chat_history(user_id, create_time DESC);
   `);
 
   migrateProfiles();
