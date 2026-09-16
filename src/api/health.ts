@@ -103,6 +103,11 @@ export const getHealthChatHistory = () => {
   );
 };
 
+/** 清空当前用户的对话历史（P1-6；清空后前端刷新会话） */
+export const clearHealthChatHistory = () => {
+  return http.request<Result<null>>("delete", "/api/health/chat/history");
+};
+
 /** 方案 B 可用性（Key 在服务端，前端只问「能不能用」，不下发 Key） */
 export const getHealthChatConfig = () => {
   return http.request<Result<{ llmAvailable: boolean }>>(

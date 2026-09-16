@@ -33,6 +33,12 @@ function responseInterceptor(response: any) {
   if (err) return { error: String(err) };
   return { text: "（未获取到有效回答）" };
 }
+
+// ---------- 清空会话（P1-6）：父组件「清空对话」按钮调用 ----------
+function resetChat() {
+  chatRef.value?.reset?.();
+}
+defineExpose({ resetChat });
 </script>
 
 <template>

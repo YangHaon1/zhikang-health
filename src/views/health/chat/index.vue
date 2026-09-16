@@ -1,7 +1,12 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from "vue";
+import { ElMessageBox } from "element-plus";
 import { message } from "@/utils/message";
-import { getHealthChatConfig, getHealthChatHistory } from "@/api/health";
+import {
+  clearHealthChatHistory,
+  getHealthChatConfig,
+  getHealthChatHistory
+} from "@/api/health";
 import { ChatGPT } from "./components";
 
 defineOptions({
@@ -23,6 +28,28 @@ const noKey = computed(() => mode.value === "llm" && !llmAvailable.value);
 // 会话历史存服务端（chat_history 表）：换浏览器、重启服务后仍能恢复
 const history = ref<Array<{ role: string; text: string }>>([]);
 const loaded = ref(false);
+
+// 子组件（ChatGPT）实例：清空对话时调用其 resetChat()
+const chatComp = ref<{ resetChat?: () => void }>();
+
+/** 清空对话历史（P1-6）：服务端删除 + 前端重置会话，幂等 */
+async function handleClearChat() {
+  try {
+    await ElMessageBox.confirm(
+      "将清空服务端保存的全部对话记录，且无法恢复。确定清空吗？",
+      "清空对话",
+      { type: "warning", confirmButtonText: "清空", cancelButtonText: "取消" }
+    );
+  } catch {
+    return; // 用户取消
+  }
+  const res = await clearHealthChatHistory();
+  if (res?.code === 0) {
+    history.value = [];
+    chatComp.value?.resetChat?.();
+    message("对话历史已清空", { type: "success" });
+  }
+}
 
 onMounted(async () => {
   try {
@@ -60,10 +87,15 @@ function handleModeChange(next: string | number | boolean) {
             基于您的健康档案与指标记录，解读血压、血糖、血脂并评估健康风险
           </div>
         </div>
-        <el-radio-group v-model="mode" @change="handleModeChange">
-          <el-radio-button value="rules">规则引擎</el-radio-button>
-          <el-radio-button value="llm">AI 大模型</el-radio-button>
-        </el-radio-group>
+        <div class="flex items-center gap-3">
+          <el-button size="small" :icon="'Delete'" @click="handleClearChat">
+            清空对话
+          </el-button>
+          <el-radio-group v-model="mode" @change="handleModeChange">
+            <el-radio-button value="rules">规则引擎</el-radio-button>
+            <el-radio-button value="llm">AI 大模型</el-radio-button>
+          </el-radio-group>
+        </div>
       </div>
     </template>
 
@@ -76,6 +108,6 @@ function handleModeChange(next: string | number | boolean) {
       class="mb-3"
     />
 
-    <ChatGPT v-if="loaded" :history="history" />
+    <ChatGPT v-if="loaded" ref="chatComp" :history="history" />
   </el-card>
 </template>
