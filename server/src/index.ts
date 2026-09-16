@@ -6,7 +6,7 @@ import path from "node:path";
 import { initDb } from "./db.js";
 import { ensureDirs, uploadsDir } from "./paths.js";
 import authRouter from "./routes/auth.js";
-import healthRouter from "./routes/health.js";
+import healthRouter from "./routes/health/index.js";
 import userRouter from "./routes/user.js";
 
 const app = express();
