@@ -1,8 +1,7 @@
 <script setup lang="ts">
-import { formUpload } from "@/api/mock";
 import { message } from "@/utils/message";
 import { onMounted, reactive, ref } from "vue";
-import { type UserInfo, getMine } from "@/api/user";
+import { type UserInfo, getMine, uploadAvatar } from "@/api/user";
 import type { FormInstance, FormRules } from "element-plus";
 import ReCropperPreview from "@/components/ReCropperPreview";
 import { createFormData, deviceDetection } from "@pureadmin/utils";
@@ -69,16 +68,23 @@ const handleClose = () => {
 const onCropper = ({ blob }) => (cropperBlob.value = blob);
 
 const handleSubmitImage = () => {
+  if (!cropperBlob.value) {
+    message("请先完成裁剪", { type: "warning" });
+    return;
+  }
   const formData = createFormData({
     files: new File([cropperBlob.value], "avatar")
   });
-  formUpload(formData)
-    .then(({ code }) => {
+  // 真实上传：/api/upload 落盘 server/data/uploads 并静态托管，返回 /uploads/xxx
+  // 服务端同时把该地址写入当前登录用户的 avatar，刷新后仍然生效
+  uploadAvatar(formData)
+    .then(({ code, message: msg, data }) => {
       if (code === 0) {
+        userInfos.avatar = data?.url ?? userInfos.avatar;
         message("更新头像成功", { type: "success" });
         handleClose();
       } else {
-        message("更新头像失败");
+        message(msg || "更新头像失败", { type: "error" });
       }
     })
     .catch(error => {

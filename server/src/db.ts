@@ -1,11 +1,10 @@
 import Database from "better-sqlite3";
-import { mkdirSync } from "node:fs";
 import path from "node:path";
 import bcrypt from "bcrypt";
+import { dataDir, ensureDirs } from "./paths.js";
 
 // 数据目录：server/data/zhikang.db（已在 .gitignore 中排除，不入库）
-const dataDir = path.resolve(import.meta.dirname, "../data");
-mkdirSync(dataDir, { recursive: true });
+ensureDirs();
 
 const db = new Database(path.join(dataDir, "zhikang.db"));
 db.pragma("journal_mode = WAL");
@@ -28,6 +27,10 @@ export function initDb(): void {
       description   TEXT DEFAULT '',
       avatar        TEXT DEFAULT '',
       roles         TEXT DEFAULT 'common',    -- 'admin' | 'common'
+      sex           INTEGER DEFAULT 0,        -- 0 男 1 女（用户管理页）
+      status        INTEGER DEFAULT 1,        -- 1 启用 0 停用
+      dept_id       INTEGER DEFAULT 0,        -- 归属部门，数据见 src/data/depts.ts
+      remark        TEXT DEFAULT '',
       create_time   TEXT DEFAULT (datetime('now','localtime'))
     );
 
@@ -92,7 +95,43 @@ export function initDb(): void {
   `);
 
   migrateProfiles();
+  migrateUsers();
   seedUsers();
+}
+
+/**
+ * users 表最小迁移（幂等）：B1 建表时只有登录/账户设置需要的列，
+ * B8 的用户管理页还要展示与编辑 性别/状态/归属部门/备注，缺哪列补哪列。
+ */
+function migrateUsers(): void {
+  const columns = db
+    .prepare("SELECT name FROM pragma_table_info('users')")
+    .all() as Array<{ name: string }>;
+  const existing = new Set(columns.map(c => c.name));
+  const additions: Array<[string, string]> = [
+    ["sex", "INTEGER DEFAULT 0"],
+    ["status", "INTEGER DEFAULT 1"],
+    ["dept_id", "INTEGER DEFAULT 0"],
+    ["remark", "TEXT DEFAULT ''"]
+  ];
+
+  const added: Array<string> = [];
+  for (const [name, ddl] of additions) {
+    if (existing.has(name)) continue;
+    // 列名来自上方常量白名单，非用户输入，无注入风险
+    db.exec(`ALTER TABLE users ADD COLUMN ${name} ${ddl}`);
+    added.push(name);
+  }
+  if (!added.length) return;
+  console.log(`[db] users 表补列：${added.join(", ")}`);
+
+  // dept_id 刚补出来时全为默认值 0，给两个演示账号回填部门。
+  // 只在补列这一次执行，后续以库内值为准（管理员改过的部门不会被覆盖）。
+  const backfill = db.prepare(
+    "UPDATE users SET dept_id = ? WHERE username = ? AND dept_id = 0"
+  );
+  backfill.run(103, "admin");
+  backfill.run(105, "common");
 }
 
 /**
@@ -131,23 +170,32 @@ function seedUsers(): void {
   if (c > 0) return;
 
   const insert = db.prepare(
-    "INSERT INTO users (username, password_hash, nickname, email, roles) VALUES (?, ?, ?, ?, ?)"
+    `INSERT INTO users (username, password_hash, nickname, email, roles, sex, status, dept_id, remark)
+     VALUES (@username, @password_hash, @nickname, @email, @roles, @sex, @status, @dept_id, @remark)`
   );
   const tx = db.transaction(() => {
-    insert.run(
-      "admin",
-      bcrypt.hashSync("admin123", 10),
-      "管理员",
-      "admin@zhikang.local",
-      "admin"
-    );
-    insert.run(
-      "common",
-      bcrypt.hashSync("common123", 10),
-      "普通用户",
-      "common@zhikang.local",
-      "common"
-    );
+    insert.run({
+      username: "admin",
+      password_hash: bcrypt.hashSync("admin123", 10),
+      nickname: "管理员",
+      email: "admin@zhikang.local",
+      roles: "admin",
+      sex: 0,
+      status: 1,
+      dept_id: 103,
+      remark: "管理员"
+    });
+    insert.run({
+      username: "common",
+      password_hash: bcrypt.hashSync("common123", 10),
+      nickname: "普通用户",
+      email: "common@zhikang.local",
+      roles: "common",
+      sex: 1,
+      status: 1,
+      dept_id: 105,
+      remark: "普通用户"
+    });
   });
   tx();
 }

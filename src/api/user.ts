@@ -93,3 +93,30 @@ export const getMine = (data?: object) => {
 export const getMineLogs = (data?: object) => {
   return http.request<ResultTable>("get", "/api/mine-logs", { data });
 };
+
+export type AvatarResult = {
+  code: number;
+  message: string;
+  data?: {
+    /** 头像可访问地址：/uploads/xxx.png（服务端静态托管） */
+    url: string;
+    /** 头像归属用户 id */
+    userId: number;
+    size: number;
+  };
+};
+
+/**
+ * 上传头像（服务端 multer 落盘 server/data/uploads 并静态托管）
+ * @param data 由 `createFormData` 生成的 FormData
+ * @param userId 管理员给指定用户换头像时传（不传则为当前登录用户）
+ */
+export const uploadAvatar = (data: object, userId?: number) => {
+  return http.request<AvatarResult>("post", "/api/upload", {
+    data,
+    params: userId ? { userId } : undefined,
+    headers: {
+      "Content-Type": "multipart/form-data"
+    }
+  });
+};

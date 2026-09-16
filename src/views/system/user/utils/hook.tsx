@@ -14,15 +14,20 @@ import type { FormItemProps, RoleFormItemProps } from "../utils/types";
 import {
   getKeyList,
   isAllEmpty,
+  createFormData,
   hideTextAtIndex,
   deviceDetection
 } from "@pureadmin/utils";
 import {
+  addUser,
+  deleteUser,
+  updateUser,
   getRoleIds,
   getDeptList,
   getUserList,
   getAllRoleList
 } from "@/api/system";
+import { uploadAvatar } from "@/api/user";
 import {
   ElForm,
   ElInput,
@@ -42,6 +47,21 @@ import {
 } from "vue";
 
 export function useUser(tableRef: Ref, treeRef: Ref) {
+  /** 接口返回形状（服务端统一 `{ code, message, data }`） */
+  type ApiResult = { code: number; message?: string; data?: any };
+
+  /**
+   * 统一兜底：401/403/404 会被 http 拦截器 reject，这里转成同一形状返回，
+   * 页面只需判 `code === 0`，不会因为权限或服务异常出现「点了没反应」。
+   */
+  async function callApi(request: Promise<any>): Promise<ApiResult> {
+    try {
+      return await request;
+    } catch {
+      return { code: -1, message: "请求失败：无权限或服务异常" };
+    }
+  }
+
   const form = reactive({
     // 左侧部门树的id
     deptId: "",
@@ -202,7 +222,7 @@ export function useUser(tableRef: Ref, treeRef: Ref) {
         draggable: true
       }
     )
-      .then(() => {
+      .then(async () => {
         switchLoadMap.value[index] = Object.assign(
           {},
           switchLoadMap.value[index],
@@ -210,18 +230,25 @@ export function useUser(tableRef: Ref, treeRef: Ref) {
             loading: true
           }
         );
-        setTimeout(() => {
-          switchLoadMap.value[index] = Object.assign(
-            {},
-            switchLoadMap.value[index],
-            {
-              loading: false
-            }
-          );
+        const { code, message: msg } = await callApi(
+          updateUser(row.id, { status: row.status })
+        );
+        switchLoadMap.value[index] = Object.assign(
+          {},
+          switchLoadMap.value[index],
+          {
+            loading: false
+          }
+        );
+        if (code === 0) {
           message("已成功修改用户状态", {
             type: "success"
           });
-        }, 300);
+          return;
+        }
+        // 服务端未改成功（如无权限）：开关回滚，避免界面与库里不一致
+        row.status === 0 ? (row.status = 1) : (row.status = 0);
+        message(msg || "修改用户状态失败", { type: "error" });
       })
       .catch(() => {
         row.status === 0 ? (row.status = 1) : (row.status = 0);
@@ -232,17 +259,25 @@ export function useUser(tableRef: Ref, treeRef: Ref) {
     console.log(row);
   }
 
-  function handleDelete(row) {
-    message(`您删除了用户编号为${row.id}的这条数据`, { type: "success" });
-    onSearch();
+  async function handleDelete(row) {
+    const { code, message: msg } = await callApi(deleteUser(row.id));
+    if (code === 0) {
+      message(`您删除了用户编号为${row.id}的这条数据`, { type: "success" });
+      onSearch();
+    } else {
+      message(msg || "删除失败", { type: "error" });
+    }
   }
 
   function handleSizeChange(val: number) {
-    console.log(`${val} items per page`);
+    pagination.pageSize = val;
+    pagination.currentPage = 1;
+    onSearch();
   }
 
   function handleCurrentChange(val: number) {
-    console.log(`current page: ${val}`);
+    pagination.currentPage = val;
+    onSearch();
   }
 
   /** 当CheckBox选择项发生变化时会触发该事件 */
@@ -260,25 +295,47 @@ export function useUser(tableRef: Ref, treeRef: Ref) {
   }
 
   /** 批量删除 */
-  function onbatchDel() {
+  async function onbatchDel() {
     // 返回当前选中的行
     const curSelected = tableRef.value.getTableRef().getSelectionRows();
-    // 接下来根据实际业务，通过选中行的某项数据，比如下面的id，调用接口进行批量删除
-    message(`已删除用户编号为 ${getKeyList(curSelected, "id")} 的数据`, {
-      type: "success"
-    });
+    const ids = getKeyList(curSelected, "id");
+    let failed = 0;
+    for (const id of ids) {
+      const { code } = await callApi(deleteUser(Number(id)));
+      if (code !== 0) failed++;
+    }
+    message(
+      failed
+        ? `已删除 ${ids.length - failed} 条，${failed} 条未能删除（当前登录用户或最后一个管理员受保护）`
+        : `已删除用户编号为 ${ids.join("、")} 的数据`,
+      { type: failed ? "warning" : "success" }
+    );
     tableRef.value.getTableRef().clearSelection();
     onSearch();
   }
 
   async function onSearch() {
     loading.value = true;
-    const { code, data } = await getUserList(toRaw(form));
+    const {
+      code,
+      message: msg,
+      data
+    } = await callApi(
+      getUserList({
+        ...toRaw(form),
+        currentPage: pagination.currentPage,
+        pageSize: pagination.pageSize
+      })
+    );
     if (code === 0) {
       dataList.value = data.list;
       pagination.total = data.total;
       pagination.pageSize = data.pageSize;
       pagination.currentPage = data.currentPage;
+    } else {
+      dataList.value = [];
+      pagination.total = 0;
+      message(msg || "获取用户列表失败", { type: "error" });
     }
 
     setTimeout(() => {
@@ -338,25 +395,37 @@ export function useUser(tableRef: Ref, treeRef: Ref) {
       beforeSure: (done, { options }) => {
         const FormRef = formRef.value.getRef();
         const curData = options.props.formInline as FormItemProps;
-        function chores() {
-          message(`您${title}了用户名称为${curData.username}的这条数据`, {
-            type: "success"
-          });
-          done(); // 关闭弹框
-          onSearch(); // 刷新表格数据
+        async function chores() {
+          const payload = {
+            username: curData.username,
+            nickname: curData.nickname,
+            phone: curData.phone,
+            email: curData.email,
+            sex: curData.sex === "" ? 0 : Number(curData.sex),
+            status: curData.status,
+            deptId: Number(curData.parentId) || 0,
+            remark: curData.remark
+          };
+          // 新增走 POST /api/user，修改走 PUT /api/user/:id（改密码时服务端 bcrypt 重哈希）
+          const { code, message: msg } =
+            title === "新增"
+              ? await callApi(
+                  addUser({ ...payload, password: curData.password })
+                )
+              : await callApi(updateUser(row.id, payload));
+          if (code === 0) {
+            message(`您${title}了用户名称为${curData.username}的这条数据`, {
+              type: "success"
+            });
+            done(); // 关闭弹框
+            onSearch(); // 刷新表格数据
+          } else {
+            message(msg || `${title}失败`, { type: "error" });
+          }
         }
         FormRef.validate(valid => {
-          if (valid) {
-            console.log("curData", curData);
-            // 表单规则校验通过
-            if (title === "新增") {
-              // 实际开发先调用新增接口，再进行下面操作
-              chores();
-            } else {
-              // 实际开发先调用修改接口，再进行下面操作
-              chores();
-            }
-          }
+          // 表单规则校验通过
+          if (valid) chores();
         });
       }
     });
@@ -376,11 +445,26 @@ export function useUser(tableRef: Ref, treeRef: Ref) {
           imgSrc: row.avatar || userAvatar,
           onCropper: info => (avatarInfo.value = info)
         }),
-      beforeSure: done => {
-        console.log("裁剪后的图片信息：", avatarInfo.value);
-        // 根据实际业务使用avatarInfo.value和row里的某些字段去调用上传头像接口即可
-        done(); // 关闭弹框
-        onSearch(); // 刷新表格数据
+      beforeSure: async done => {
+        const info = avatarInfo.value as { blob?: Blob } | undefined;
+        if (!info?.blob) {
+          message("请先在预览区完成裁剪", { type: "warning" });
+          return;
+        }
+        // 管理员给指定用户换头像：/api/upload 带 userId，服务端校验 admin 后写该用户的 avatar
+        const formData = createFormData({
+          files: new File([info.blob], "avatar")
+        });
+        const { code, message: msg } = await callApi(
+          uploadAvatar(formData, row.id)
+        );
+        if (code === 0) {
+          message("上传头像成功", { type: "success" });
+          done(); // 关闭弹框
+          onSearch(); // 刷新表格数据
+        } else {
+          message(msg || "上传头像失败", { type: "error" });
+        }
       },
       closeCallBack: () => cropRef.value.hidePopover()
     });
@@ -452,16 +536,21 @@ export function useUser(tableRef: Ref, treeRef: Ref) {
       ),
       closeCallBack: () => (pwdForm.newPwd = ""),
       beforeSure: done => {
-        ruleFormRef.value.validate(valid => {
+        ruleFormRef.value.validate(async valid => {
           if (valid) {
-            // 表单规则校验通过
-            message(`已成功重置 ${row.username} 用户的密码`, {
-              type: "success"
-            });
-            console.log(pwdForm.newPwd);
-            // 根据实际业务使用pwdForm.newPwd和row里的某些字段去调用重置用户密码接口即可
-            done(); // 关闭弹框
-            onSearch(); // 刷新表格数据
+            // 表单规则校验通过：服务端 bcrypt 重新哈希后入库，明文不落库
+            const { code, message: msg } = await callApi(
+              updateUser(row.id, { password: pwdForm.newPwd })
+            );
+            if (code === 0) {
+              message(`已成功重置 ${row.username} 用户的密码`, {
+                type: "success"
+              });
+              done(); // 关闭弹框
+              onSearch(); // 刷新表格数据
+            } else {
+              message(msg || "重置密码失败", { type: "error" });
+            }
           }
         });
       }
@@ -488,11 +577,19 @@ export function useUser(tableRef: Ref, treeRef: Ref) {
       fullscreenIcon: true,
       closeOnClickModal: false,
       contentRenderer: () => h(roleForm),
-      beforeSure: (done, { options }) => {
+      beforeSure: async (done, { options }) => {
         const curData = options.props.formInline as RoleFormItemProps;
-        console.log("curIds", curData.ids);
-        // 根据实际业务使用curData.ids和row里的某些字段去调用修改角色接口即可
-        done(); // 关闭弹框
+        // 角色 id（1 超级管理员 / 2 普通角色）→ 服务端映射为 roles 列
+        const { code, message: msg } = await callApi(
+          updateUser(row.id, { roleIds: curData.ids.map(Number) })
+        );
+        if (code === 0) {
+          message(`已更新 ${row.username} 用户的角色`, { type: "success" });
+          done(); // 关闭弹框
+          onSearch(); // 刷新表格数据
+        } else {
+          message(msg || "分配角色失败", { type: "error" });
+        }
       }
     });
   }

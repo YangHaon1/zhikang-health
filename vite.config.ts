@@ -28,6 +28,12 @@ export default async ({ mode }: ConfigEnv): Promise<UserConfigExport> => {
         "/api": {
           target: "http://localhost:3000",
           changeOrigin: true
+        },
+        // 头像等上传文件的静态目录（服务端 express.static 托管 server/data/uploads），
+        // 不走代理的话 dev 下 <img src="/uploads/xxx"> 会落到 vite 上 404
+        "/uploads": {
+          target: "http://localhost:3000",
+          changeOrigin: true
         }
         // 说明（B6）：方案 B 的 AI 大模型改由后端直连（server/src/llm.ts，Key 在 server/.env），
         // 前端不再持有 Key，原先的 /llm-api 代理已删除。

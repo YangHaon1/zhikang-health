@@ -9,6 +9,10 @@ export interface UserRow {
   description: string;
   avatar: string;
   roles: string;
+  sex: number;
+  status: number;
+  dept_id: number;
+  remark: string;
   create_time: string;
 }
 
