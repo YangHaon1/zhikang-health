@@ -22,6 +22,8 @@ allowedDeprecatedVersions:
 allowBuilds:
   '@tailwindcss/oxide': false
   '@parcel/watcher': true
+  better-sqlite3: true
+  bcrypt: true
   node-pty: false
   vue-demi: true
   esbuild: true
