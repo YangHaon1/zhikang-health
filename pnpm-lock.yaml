@@ -166,9 +166,6 @@ importers:
 
   .:
     dependencies:
-      '@pureadmin/descriptions':
-        specifier: ^1.2.1
-        version: 1.2.1(echarts@6.1.0)(element-plus@2.14.5(vue@3.5.41(typescript@6.0.3)))(typescript@6.0.3)
       '@pureadmin/table':
         specifier: ^3.3.0
         version: 3.3.0(element-plus@2.14.5(vue@3.5.41(typescript@6.0.3)))(typescript@6.0.3)
@@ -196,9 +193,6 @@ importers:
       better-sqlite3:
         specifier: ^13.0.3
         version: 13.0.3
-      china-area-data:
-        specifier: ^5.0.1
-        version: 5.0.1
       cropperjs:
         specifier: ^1.6.2
         version: 1.6.3
@@ -226,9 +220,6 @@ importers:
       jsonwebtoken:
         specifier: ^9.0.3
         version: 9.0.3
-      localforage:
-        specifier: ^1.10.0
-        version: 1.10.0
       mitt:
         specifier: ^3.0.1
         version: 3.0.1
@@ -250,9 +241,6 @@ importers:
       pinyin-pro:
         specifier: ^3.29.3
         version: 3.29.3
-      plus-pro-components:
-        specifier: ^0.1.31
-        version: 0.1.31(element-plus@2.14.5(vue@3.5.41(typescript@6.0.3)))(vue@3.5.41(typescript@6.0.3))
       qs:
         specifier: ^6.15.3
         version: 6.15.3
@@ -268,9 +256,6 @@ importers:
       typeit:
         specifier: ^8.8.7
         version: 8.8.7
-      version-rocket:
-        specifier: ^1.7.4
-        version: 1.7.4(debug@4.4.3(supports-color@10.2.2))(supports-color@10.2.2)
       vue:
         specifier: ^3.5.41
         version: 3.5.41(typescript@6.0.3)
@@ -1561,11 +1546,6 @@ packages:
   '@popperjs/core@2.11.8':
     resolution: {integrity: sha512-P1st0aksCrn9sGZhp8GMYwBnQsbvAWsZAX44oXNNvLHGqAOcoVxmjZiohstwQ7SqKnbR47akdNi+uleWD8+g6A==}
 
-  '@pureadmin/descriptions@1.2.1':
-    resolution: {integrity: sha512-7jDJuqz8xnhcmwXdWQnBzOYeX2WK27TRFaVgs9AdiRr+DnKb9W+krHByJwQtxo5lg4qyRh4/IWQGEMfhC2ljeQ==}
-    peerDependencies:
-      element-plus: ^2.0.0
-
   '@pureadmin/table@3.3.0':
     resolution: {integrity: sha512-06vp/IWUOsvt1zpPXMbVvGfrBWKBv5O1q3nZIlbSFJejJNWHG1HU+EWGuCzJD6KCsQdwNettv1wUuAleH4+YQQ==}
     peerDependencies:
@@ -2447,9 +2427,6 @@ packages:
     resolution: {integrity: sha512-7NzBL0rN6fMUW+f7A6Io4h40qQlG+xGmtMxfbnH/K7TAtt8JQWVQK+6g0UXKMeVJoyV5EkkNsErQ8pVD3bLHbA==}
     engines: {node: ^12.17.0 || ^14.13 || >=16.0.0}
 
-  china-area-data@5.0.1:
-    resolution: {integrity: sha512-BQDPpiv5Nn+018ekcJK2oSD9PAD+E1bvXB0wgabc//dFVS/KvRqCgg0QOEUt3vBkx9XzB5a9BmkJCEZDBxVjVw==}
-
   chokidar@5.0.0:
     resolution: {integrity: sha512-TQMmc3w+5AxjpL8iIiwebF73dRDF4fBIieAqGn9RGCWaEVwQ6Fb2cGe31Yns0RRIzii5goJ1Y7xbMwo1TxMplw==}
     engines: {node: '>= 20.19.0'}
@@ -3178,9 +3155,6 @@ packages:
     resolution: {integrity: sha512-BAg6QkE8W+TuQLrrw0Ugr7HegXduRuuj8/ti2kSOc+jz1dmx8/WNcjr6XGnq5YpDWxFwwaavqD0+jIUOKelTsw==}
     engines: {node: '>= 4'}
 
-  immediate@3.0.6:
-    resolution: {integrity: sha512-XXOFtyqDjNDAQxVfYxuF7g9Il/IbWmmlQg2MYKOH8ExIT1qg6xc4zyS3HaEEATgs1btfzxq15ciUiY7gjSXRGQ==}
-
   immutable@5.1.9:
     resolution: {integrity: sha512-m8nVez3rwrgmWxtLMt1ZYXB2Lv7OKYn/disyxAlSDYAlKSlFoPPfIAmAM/M5xqL4m4C/wAPw7S2/CNaUii1Hxg==}
 
@@ -3361,9 +3335,6 @@ packages:
     resolution: {integrity: sha512-+bT2uH4E5LGE7h/n3evcS/sQlJXCpIp6ym8OWJ5eV6+67Dsql/LaaT7qJBAt2rzfoa/5QBGBhxDix1dMt2kQKQ==}
     engines: {node: '>= 0.8.0'}
 
-  lie@3.1.1:
-    resolution: {integrity: sha512-RiNhHysUjhrDQntfYSfY4MU24coXXdEOgw9WGcKHNeEwffDYbF//u87M1EWaMGzuFoSbqW0C9C6lEEhDOAswfw==}
-
   lightningcss-android-arm64@1.32.0:
     resolution: {integrity: sha512-YK7/ClTt4kAK0vo6w3X+Pnm0D2cf2vPHbhOXdoNti1Ga0al1P4TBZhwjATvjNwLEBCnKvjJc2jQgHXH0NEwlAg==}
     engines: {node: '>= 12.0.0'}
@@ -3527,9 +3498,6 @@ packages:
   local-pkg@1.2.1:
     resolution: {integrity: sha512-++gUqRDEvcnN6Zhqrr+y/CkVEHhlrR96vZn3nZZPYzMcBUyBtTKzB9NadClFIsIVSsu+3i9tfk/erqy9kAmt7Q==}
     engines: {node: '>=14'}
-
-  localforage@1.10.0:
-    resolution: {integrity: sha512-14/H1aX7hzBBmmh7sGPd+AOMkkIrHM3Z1PAyGgZigA1H1p5O5ANnMyWzvpAETtG68/dC4pC0ncy3+PPGzXZHPg==}
 
   locate-path@6.0.0:
     resolution: {integrity: sha512-iPZK6eYjbxRu3uB4/WZ3EsEIMJFMqAoopl3R+zuq0UjcAm/MO6KCweDgPfP3elTztoKP3KtnVHxTn2NHBSDVUw==}
@@ -3854,12 +3822,6 @@ packages:
 
   pkg-types@2.3.1:
     resolution: {integrity: sha512-y+ichcgc2LrADuhLNAx8DFjVfgz91pRxfZdI3UDhxHvcVEZsenLO+7XaU5vOp0u/7V/wZ+plyuQxtrDlZJ+yeg==}
-
-  plus-pro-components@0.1.31:
-    resolution: {integrity: sha512-LKYAoDrM+VufVCfRuHUPJTBNwmzo/MRu7Lfkcg9+QKjmHzsOP1zo5ecMI4euddTqVjvvjC+8ZURK2CIpge0BQA==}
-    peerDependencies:
-      element-plus: ^2.3.4
-      vue: ^3.2.0
 
   popmotion@11.0.5:
     resolution: {integrity: sha512-la8gPM1WYeFznb/JqF4GiTkRRPZsfaj2+kCxqQgr2MJylMmIKUwBfWW8Wa5fml/8gmtlD5yI01MP1QCZPWmppA==}
@@ -4738,10 +4700,6 @@ packages:
   vary@1.1.2:
     resolution: {integrity: sha512-BNGbWLfd0eUPabhkXUVm0j8uuvREyTh5ovRa/dyow/BqAbZJyC+5fU+IzQOzmAKzYqYRAISoRhdQr3eIZ/PXqg==}
     engines: {node: '>= 0.8'}
-
-  version-rocket@1.7.4:
-    resolution: {integrity: sha512-YTQ7zMq7UuMfNpC/DxP+d+hlhLeDEFFi1dmWGiYXsDA8x4mN1X/NQuPPdOsUjh1UG/owWNjdTQhSqJyWxwrQeQ==}
-    hasBin: true
 
   vite-plugin-cdn-import@1.0.1:
     resolution: {integrity: sha512-lgjLxgwFSKvJLbqjVBirUZ0rQo00GpUGJzRpgQu8RyBw9LA7jaqG6fUMQzBC9qWmTGabPC3iOzwCcoi7PseRAQ==}
@@ -5980,16 +5938,6 @@ snapshots:
 
   '@popperjs/core@2.11.8': {}
 
-  '@pureadmin/descriptions@1.2.1(echarts@6.1.0)(element-plus@2.14.5(vue@3.5.41(typescript@6.0.3)))(typescript@6.0.3)':
-    dependencies:
-      '@element-plus/icons-vue': 2.3.2(vue@3.5.41(typescript@6.0.3))
-      '@pureadmin/utils': 2.6.4(echarts@6.1.0)(vue@3.5.41(typescript@6.0.3))
-      element-plus: 2.14.5(vue@3.5.41(typescript@6.0.3))
-      vue: 3.5.41(typescript@6.0.3)
-    transitivePeerDependencies:
-      - echarts
-      - typescript
-
   '@pureadmin/table@3.3.0(element-plus@2.14.5(vue@3.5.41(typescript@6.0.3)))(typescript@6.0.3)':
     dependencies:
       element-plus: 2.14.5(vue@3.5.41(typescript@6.0.3))
@@ -6836,8 +6784,6 @@ snapshots:
       supports-color: 7.2.0
 
   chalk@5.6.2: {}
-
-  china-area-data@5.0.1: {}
 
   chokidar@5.0.0:
     dependencies:
@@ -7686,8 +7632,6 @@ snapshots:
 
   ignore@7.0.6: {}
 
-  immediate@3.0.6: {}
-
   immutable@5.1.9: {}
 
   import-fresh@3.3.1:
@@ -7840,10 +7784,6 @@ snapshots:
       prelude-ls: 1.2.1
       type-check: 0.4.0
 
-  lie@3.1.1:
-    dependencies:
-      immediate: 3.0.6
-
   lightningcss-android-arm64@1.32.0:
     optional: true
 
@@ -7959,10 +7899,6 @@ snapshots:
       mlly: 1.8.2
       pkg-types: 2.3.1
       quansync: 0.2.11
-
-  localforage@1.10.0:
-    dependencies:
-      lie: 3.1.1
 
   locate-path@6.0.0:
     dependencies:
@@ -8260,14 +8196,6 @@ snapshots:
       confbox: 0.2.4
       exsolve: 1.1.1
       pathe: 2.0.3
-
-  plus-pro-components@0.1.31(element-plus@2.14.5(vue@3.5.41(typescript@6.0.3)))(vue@3.5.41(typescript@6.0.3)):
-    dependencies:
-      '@element-plus/icons-vue': 2.3.2(vue@3.5.41(typescript@6.0.3))
-      element-plus: 2.14.5(vue@3.5.41(typescript@6.0.3))
-      lodash-es: 4.18.1
-      sortablejs: 1.15.7
-      vue: 3.5.41(typescript@6.0.3)
 
   popmotion@11.0.5:
     dependencies:
@@ -9157,14 +9085,6 @@ snapshots:
       typescript: 6.0.3
 
   vary@1.1.2: {}
-
-  version-rocket@1.7.4(debug@4.4.3(supports-color@10.2.2))(supports-color@10.2.2):
-    dependencies:
-      axios: 1.18.1(debug@4.4.3(supports-color@10.2.2))(supports-color@10.2.2)
-      dayjs: 1.11.23
-    transitivePeerDependencies:
-      - debug
-      - supports-color
 
   vite-plugin-cdn-import@1.0.1(rollup@4.62.5)(vite@8.2.2(@types/node@20.19.43)(esbuild@0.27.7)(jiti@2.7.0)(sass@1.103.1)(tsx@4.23.13)(yaml@2.9.0)):
     dependencies:

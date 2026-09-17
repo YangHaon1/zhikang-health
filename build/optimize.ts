@@ -12,7 +12,6 @@ const include = [
   "axios",
   "pinia",
   "typeit",
-  "qrcode",
   "vue-i18n",
   "deep-chat",
   "vxe-table",
@@ -23,10 +22,8 @@ const include = [
   "pinyin-pro",
   "sortablejs",
   "@vueuse/core",
-  "china-area-data",
   "@pureadmin/utils",
-  "responsive-storage",
-  "plus-pro-components"
+  "responsive-storage"
 ];
 
 /**
