@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import "deep-chat";
 import { ref } from "vue";
+import { getToken } from "@/utils/auth";
 
 // AI 健康助手对话组件（保留 ChatGPT 风格皮肤）
 const chatRef = ref();
@@ -17,9 +18,12 @@ const isLlm = localStorage.getItem(MODE_KEY) === "llm";
 
 // 两种模式都打同一个后端接口：方案 A 由服务端规则引擎作答，方案 B 由服务端代调大模型。
 // API Key 只在服务端（server/.env 的 LLM_API_KEY），前端不再持有任何 Key。
+// 必须带 Authorization，否则后端 authMiddleware 返回 401，deep-chat 会显示 Error。
+const accessToken = getToken()?.accessToken ?? "";
 const connect = {
   url: "/api/health/chat",
   method: "POST",
+  headers: { Authorization: `Bearer ${accessToken}` },
   additionalBodyProps: { mode: isLlm ? "llm" : "rules" },
   stream: false
 };
@@ -49,29 +53,34 @@ defineExpose({ resetChat });
       default: {
         shared: {
           bubble: {
-            maxWidth: '100%',
-            backgroundColor: 'unset',
-            marginTop: '10px',
-            marginBottom: '10px'
+            maxWidth: '75%',
+            marginTop: '8px',
+            marginBottom: '8px',
+            borderRadius: '12px',
+            padding: '10px 14px',
+            fontSize: '14px',
+            lineHeight: '1.6'
           }
         },
         user: {
+          outerContainer: { justifyContent: 'flex-end' },
           bubble: {
-            marginLeft: '0px',
-            color: 'black'
+            backgroundColor: '#16a34a',
+            color: 'white'
           }
         },
         ai: {
-          outerContainer: {
-            backgroundColor: 'rgba(247,247,248)',
-            borderTop: '1px solid rgba(0,0,0,.1)',
-            borderBottom: '1px solid rgba(0,0,0,.1)'
+          outerContainer: { justifyContent: 'flex-start' },
+          bubble: {
+            backgroundColor: '#f4f4f5',
+            color: '#1f2937'
           }
         }
       }
     }"
     :avatars="{
-      default: { styles: { position: 'start' } }
+      ai: { styles: { position: 'start' } },
+      user: { default: { hidden: true } }
     }"
     :submitButtonStyles="{
       submit: {
