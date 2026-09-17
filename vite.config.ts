@@ -63,7 +63,24 @@ export default async ({ mode }: ConfigEnv): Promise<UserConfigExport> => {
         output: {
           chunkFileNames: "static/js/[name]-[hash].js",
           entryFileNames: "static/js/[name]-[hash].js",
-          assetFileNames: "static/[ext]/[name]-[hash].[ext]"
+          assetFileNames: "static/[ext]/[name]-[hash].[ext]",
+          // 第三方大库拆分为稳定的 vendor chunk：减小主 chunk 体积、利于浏览器长效缓存。
+          // 仅拆分边界清晰、无循环依赖风险的重库；xlsx / deep-chat 已随路由级动态 import 自动分离。
+          manualChunks(id) {
+            if (!id.includes("node_modules")) return undefined;
+            // 兼容 pnpm：node_modules/.pnpm/<pkg>@ver/node_modules/<pkg>/...，取最后一段包名
+            const segments = id.split("node_modules");
+            const tail = segments[segments.length - 1].replace(/^[\\/]/, "");
+            const pkg = tail.startsWith("@")
+              ? tail.split(/[\\/]/).slice(0, 2).join("/")
+              : tail.split(/[\\/]/)[0];
+            if (/^(echarts|zrender)([\\/]|$)/.test(pkg))
+              return "vendor-echarts";
+            if (/^(@element-plus[\\/]|element-plus)/.test(pkg))
+              return "vendor-element";
+            if (/^(vxe-|xe-utils)/.test(pkg)) return "vendor-vxe";
+            return undefined;
+          }
         },
         checks: {
           pluginTimings: false,
