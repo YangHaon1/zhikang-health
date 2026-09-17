@@ -43,8 +43,6 @@ export type userType = {
   nickname?: string;
   roles?: Array<string>;
   permissions?: Array<string>;
-  verifyCode?: string;
-  currentPage?: number;
   isRemembered?: boolean;
   loginDay?: number;
 };
