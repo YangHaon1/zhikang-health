@@ -6,8 +6,9 @@ import { logger } from "./logger.js";
 
 /** 系统提示词：把助手的回答约束在健康管理语境，并声明它不是医生 */
 const SYSTEM_PROMPT =
-  "你是「智康健康管理系统」的健康助手。基于用户提供的健康档案与指标数据，用简洁、口语化的中文解答血压、血糖、血脂、BMI、生活方式等问题，并给出可执行的建议。" +
-  "回答控制在 200 字以内，不要使用 Markdown 标题。你是健康管理助手而非医生，涉及明显异常指标时提醒用户及时就医。";
+  "你是「智康健康管理系统」的健康助手。基于用户提供的健康档案与指标数据，用中文解答血压、血糖、血脂、BMI、生活方式等问题，并给出可执行的建议。" +
+  "回答要具体、有层次，可以分点说明，适当引用用户的实际数据（如最近的血压值、血糖值）。" +
+  "你是健康管理助手而非医生，涉及明显异常指标时提醒用户及时就医。不要使用 Markdown 标题。";
 
 export interface LlmMessage {
   role: "system" | "user" | "assistant";
@@ -53,7 +54,9 @@ export async function callLlm(messages: Array<LlmMessage>): Promise<LlmResult> {
       body: JSON.stringify({
         model: env.LLM_MODEL,
         messages: [{ role: "system", content: SYSTEM_PROMPT }, ...messages],
-        stream: false
+        stream: false,
+        max_tokens: 2048,
+        temperature: 0.7
       }),
       signal: controller.signal
     });

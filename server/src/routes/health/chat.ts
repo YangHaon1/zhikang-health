@@ -39,6 +39,9 @@ function extractQuestion(body: Record<string, unknown>): string {
       );
     if (last) return String((last as { content: string }).content);
   }
+  // deep-chat 默认发送 { text: "..." } 格式
+  if (typeof body.text === "string" && body.text.trim())
+    return body.text.trim();
   return toText(body.question);
 }
 
@@ -47,6 +50,14 @@ function extractLlmMessages(
   body: Record<string, unknown>
 ): Array<{ role: "user" | "assistant"; content: string }> {
   const messages = Array.isArray(body.messages) ? body.messages : [];
+  // deep-chat 发 { text } 时，转成单条 user 消息供大模型
+  if (
+    messages.length === 0 &&
+    typeof body.text === "string" &&
+    body.text.trim()
+  ) {
+    return [{ role: "user", content: body.text.trim() }];
+  }
   return messages
     .filter(
       (m: { role?: string; content?: unknown }) =>

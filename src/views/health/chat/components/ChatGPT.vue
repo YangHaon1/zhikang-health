@@ -49,7 +49,7 @@ defineExpose({ resetChat });
   <deep-chat
     ref="chatRef"
     class="zhikang-chat"
-    style="flex: 1; min-height: 560px; border-radius: 16px"
+    style="flex: 1; width: 100%; min-height: 560px; border-radius: 16px"
     :messageStyles="{
       default: {
         shared: {
@@ -88,34 +88,30 @@ defineExpose({ resetChat });
         src: '/logo.svg',
         styles: {
           position: 'start',
-          width: '32px',
-          height: '32px',
-          borderRadius: '8px'
+          avatar: { width: '32px', height: '32px', borderRadius: '8px' }
         }
       },
-      user: { default: { hidden: true } }
+      user: {
+        styles: { container: { display: 'none' } }
+      }
     }"
     :textInput="{
       placeholder: { text: '输入健康问题，例如：我最近血压怎么样' },
-      autoResize: true,
-      container: {
-        default: {
+      styles: {
+        container: {
           borderRadius: '24px',
           border: '1px solid #e5e7eb',
           backgroundColor: '#ffffff',
           boxShadow: '0 2px 12px rgba(0,0,0,0.06)',
-          padding: '4px 4px 4px 16px'
+          padding: '6px 6px 6px 18px'
+        },
+        text: {
+          fontSize: '14px',
+          color: '#1f2937'
         },
         focus: {
           border: '1px solid #16a34a',
           boxShadow: '0 2px 16px rgba(22,163,74,0.12)'
-        }
-      },
-      input: {
-        default: {
-          fontSize: '14px',
-          color: '#1f2937',
-          placeholderColor: '#9ca3af'
         }
       }
     }"
@@ -139,21 +135,11 @@ defineExpose({ resetChat });
         svg: {
           content:
             '<?xml version=&quot;1.0&quot; ?> <svg viewBox=&quot;0 0 28 28&quot; xmlns=&quot;http://www.w3.org/2000/svg&quot;> <g> <path d=&quot;M21.66,12a2,2,0,0,1-1.14,1.81L5.87,20.75A2.08,2.08,0,0,1,5,21a2,2,0,0,1-1.82-2.82L5.46,13H11a1,1,0,0,0,0-2H5.46L3.18,5.87A2,2,0,0,1,5.86,3.25h0l14.65,6.94A2,2,0,0,1,21.66,12Z&quot; fill=&quot;white&quot;> </path> </g> </svg>',
-          styles: {
-            default: { width: '18px', height: '18px' }
-          }
+          styles: { default: { width: '18px', height: '18px' } }
         }
       },
       loading: {
-        container: { default: { backgroundColor: 'transparent' } },
-        svg: {
-          styles: {
-            default: {
-              filter:
-                'brightness(0) saturate(100%) invert(72%) sepia(0%) saturate(3044%) hue-rotate(322deg) brightness(100%) contrast(96%)'
-            }
-          }
-        }
+        container: { default: { backgroundColor: 'transparent' } }
       },
       stop: {
         container: {
@@ -182,24 +168,7 @@ defineExpose({ resetChat });
 </template>
 
 <style scoped>
-/* deep-chat 是 light DOM，可通过 :deep 覆盖内部样式 */
 .zhikang-chat {
   background: transparent;
-}
-
-:deep(.deep-chat) {
-  background: transparent !important;
-}
-
-/* 消息滚动区背景 */
-:deep(.deep-chat-messages) {
-  padding: 8px 4px !important;
-  background: transparent !important;
-}
-
-/* 输入区与消息区分隔 */
-:deep(.deep-chat-input) {
-  padding: 12px 4px 4px !important;
-  border-top: none !important;
 }
 </style>
