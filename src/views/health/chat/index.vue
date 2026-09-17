@@ -26,22 +26,14 @@ const noKey = computed(() => mode.value === "llm" && !llmAvailable.value);
 // 会话历史存服务端
 const history = ref<Array<{ role: string; text: string }>>([]);
 const loaded = ref(false);
-const chatComp = ref<{
-  resetChat?: () => void;
-  sendMessage?: (text: string) => void;
-}>();
+const chatComp = ref<{ resetChat?: () => void }>();
 
-// 推荐问题（空状态展示，点击即发送）
 const suggestedQuestions = [
   "我最近血压怎么样",
   "帮我分析一下健康风险",
   "解读我的报告",
   "给我一些生活方式建议"
 ];
-
-function handleSuggestion(q: string) {
-  chatComp.value?.sendMessage?.(q);
-}
 
 async function handleClearChat() {
   try {
@@ -89,7 +81,6 @@ function handleModeChange(next: string | number | boolean) {
 <template>
   <div class="health-chat-page">
     <div class="health-chat-container">
-      <!-- 顶部标题栏 -->
       <div class="chat-header">
         <div class="chat-header-left">
           <div class="chat-title">AI 健康助手</div>
@@ -126,14 +117,12 @@ function handleModeChange(next: string | number | boolean) {
         class="mb-3"
       />
 
-      <!-- 对话主体：固定宽度居中 -->
       <div class="chat-body">
         <ChatGPT
           v-if="loaded"
           ref="chatComp"
           :history="history"
           :suggested-questions="suggestedQuestions"
-          @suggestion-click="handleSuggestion"
         />
       </div>
     </div>

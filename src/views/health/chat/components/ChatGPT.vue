@@ -1,9 +1,8 @@
 <script setup lang="ts">
 import "deep-chat";
-import { ref, watch } from "vue";
+import { ref } from "vue";
 import { getToken } from "@/utils/auth";
 
-// AI 健康助手对话组件（豆包风格：固定宽度居中、空状态推荐问题）
 const chatRef = ref<any>();
 
 const props = defineProps<{
@@ -11,16 +10,10 @@ const props = defineProps<{
   suggestedQuestions?: string[];
 }>();
 
-const emit = defineEmits<{
-  (e: "suggestion-click", text: string): void;
-}>();
-
-// 是否已交互（发送过消息），控制空状态显示
 const hasInteracted = ref(
   Array.isArray(props.history) && props.history.length > 0
 );
 
-// ---------- A/B 模式 ----------
 const MODE_KEY = "health-ai-mode";
 const isLlm = localStorage.getItem(MODE_KEY) === "llm";
 
@@ -42,17 +35,13 @@ function responseInterceptor(response: any) {
   return { text: "（未获取到有效回答）" };
 }
 
-// 用户发送消息时触发（deep-chat onMessage 回调）
 function onMessage() {
   hasInteracted.value = true;
 }
 
-// 点击推荐问题：调用 deep-chat 内部 sendMessage
 function handleSuggestion(text: string) {
   hasInteracted.value = true;
-  // deep-chat 元素暴露 sendMessage 方法
   (chatRef.value as any)?.sendMessage?.(text);
-  emit("suggestion-click", text);
 }
 
 function resetChat() {
@@ -60,12 +49,11 @@ function resetChat() {
   hasInteracted.value = false;
 }
 
-defineExpose({ resetChat, sendMessage: handleSuggestion });
+defineExpose({ resetChat });
 </script>
 
 <template>
   <div class="chat-wrapper">
-    <!-- 空状态：豆包风格大标题 + 推荐问题 -->
     <div v-if="!hasInteracted" class="empty-state">
       <div class="empty-title">有什么我可以帮你的吗？</div>
       <div class="empty-suggestions">
@@ -84,7 +72,7 @@ defineExpose({ resetChat, sendMessage: handleSuggestion });
       ref="chatRef"
       class="zhikang-chat"
       :class="{ 'chat-hidden': !hasInteracted }"
-      style=" flex: 1;width: 100%"
+      style="flex: 1; width: 100%"
       :messageStyles="{
         default: {
           shared: {
@@ -215,7 +203,6 @@ defineExpose({ resetChat, sendMessage: handleSuggestion });
   min-height: 560px;
 }
 
-/* 空状态：豆包风格 */
 .empty-state {
   display: flex;
   flex: 1;
@@ -259,12 +246,10 @@ defineExpose({ resetChat, sendMessage: handleSuggestion });
   border-color: #16a34a;
 }
 
-/* 空状态时隐藏 deep-chat（但保留挂载，便于 sendMessage） */
 .chat-hidden {
   display: none !important;
 }
 
-/* 强制 deep-chat 撑满容器，内部宽度固定不随内容变动 */
 :deep(.zhikang-chat) {
   display: flex !important;
   flex-direction: column !important;
@@ -272,13 +257,6 @@ defineExpose({ resetChat, sendMessage: handleSuggestion });
 }
 
 :deep(.zhikang-chat > *) {
-  width: 100% !important;
-  max-width: 100% !important;
-}
-
-/* 强制消息区和输入区容器宽度 100% */
-:deep(.zhikang-chat > div),
-:deep(.zhikang-chat > section) {
   width: 100% !important;
   max-width: 100% !important;
 }

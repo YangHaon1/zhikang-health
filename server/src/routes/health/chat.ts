@@ -126,7 +126,7 @@ router.delete("/health/chat/history", authMiddleware, (req, res) => {
 /**
  * POST /api/health/chat —— 对话（方案 A 规则引擎 / 方案 B 大模型）。
  *
- * 入参：`{ messages: [{role, content}] }`（deep-chat 默认格式）或 `{ question }`，可选 `{ mode: "llm" | "rules" }`。
+ * 入参：`{ messages: [{role, text/content}] }`（deep-chat 格式，text 和 content 均兼容）或 `{ question }`/`{ text }`，可选 `{ mode: "llm" | "rules" }`。
  * 出参统一 `{ code: 0, data: "<回答文本>" }`（A/B 两路同构，前端 responseInterceptor 一套解析）。
  * 本轮提问与回答**成对**写入 chat_history（归属当前用户）；若按 `messages` 传了完整历史，
  * 只落最新一条 user 消息，避免重复入库。
