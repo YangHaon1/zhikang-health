@@ -14,25 +14,35 @@ defineOptions({
 });
 
 // A/B 模式：rules（规则引擎，默认）/ llm（真实大模型）
-// 切换只写 localStorage，需刷新页面后才生效（deep-chat 连接目标在挂载时确定，不做运行时热切换）
 const MODE_KEY = "health-ai-mode";
 
 const mode = ref<"rules" | "llm">(
   localStorage.getItem(MODE_KEY) === "llm" ? "llm" : "rules"
 );
 
-// 方案 B 的 Key 在服务端，前端只能问「能不能用」；未配置时给出降级提示
 const llmAvailable = ref(true);
 const noKey = computed(() => mode.value === "llm" && !llmAvailable.value);
 
-// 会话历史存服务端（chat_history 表）：换浏览器、重启服务后仍能恢复
+// 会话历史存服务端
 const history = ref<Array<{ role: string; text: string }>>([]);
 const loaded = ref(false);
+const chatComp = ref<{
+  resetChat?: () => void;
+  sendMessage?: (text: string) => void;
+}>();
 
-// 子组件（ChatGPT）实例：清空对话时调用其 resetChat()
-const chatComp = ref<{ resetChat?: () => void }>();
+// 推荐问题（空状态展示，点击即发送）
+const suggestedQuestions = [
+  "我最近血压怎么样",
+  "帮我分析一下健康风险",
+  "解读我的报告",
+  "给我一些生活方式建议"
+];
 
-/** 清空对话历史（P1-6）：服务端删除 + 前端重置会话，幂等 */
+function handleSuggestion(q: string) {
+  chatComp.value?.sendMessage?.(q);
+}
+
 async function handleClearChat() {
   try {
     await ElMessageBox.confirm(
@@ -41,7 +51,7 @@ async function handleClearChat() {
       { type: "warning", confirmButtonText: "清空", cancelButtonText: "取消" }
     );
   } catch {
-    return; // 用户取消
+    return;
   }
   const res = await clearHealthChatHistory();
   if (res?.code === 0) {
@@ -60,7 +70,6 @@ onMounted(async () => {
     if (cfg?.code === 0 && cfg.data) llmAvailable.value = cfg.data.llmAvailable;
     if (his?.code === 0 && Array.isArray(his.data)) history.value = his.data;
   } finally {
-    // 拉取失败也放行渲染，不阻断对话
     loaded.value = true;
   }
 });
@@ -78,7 +87,7 @@ function handleModeChange(next: string | number | boolean) {
 </script>
 
 <template>
-  <div class="health-chat-wrapper">
+  <div class="health-chat-page">
     <div class="health-chat-container">
       <!-- 顶部标题栏 -->
       <div class="chat-header">
@@ -113,20 +122,26 @@ function handleModeChange(next: string | number | boolean) {
         type="warning"
         :closable="false"
         show-icon
-        title="服务端尚未配置大模型 API Key（server/.env 的 LLM_API_KEY），「AI 大模型」暂不可用，建议先使用「规则引擎」模式"
+        title="服务端尚未配置大模型 API Key，「AI 大模型」暂不可用，建议先使用「规则引擎」模式"
         class="mb-3"
       />
 
-      <!-- 对话主体：居中窄列，deep-chat 占满剩余高度 -->
+      <!-- 对话主体：固定宽度居中 -->
       <div class="chat-body">
-        <ChatGPT v-if="loaded" ref="chatComp" :history="history" />
+        <ChatGPT
+          v-if="loaded"
+          ref="chatComp"
+          :history="history"
+          :suggested-questions="suggestedQuestions"
+          @suggestion-click="handleSuggestion"
+        />
       </div>
     </div>
   </div>
 </template>
 
 <style scoped>
-.health-chat-wrapper {
+.health-chat-page {
   box-sizing: border-box;
   display: flex;
   justify-content: center;
@@ -138,7 +153,7 @@ function handleModeChange(next: string | number | boolean) {
   display: flex;
   flex-direction: column;
   width: 100%;
-  max-width: 860px;
+  max-width: 800px;
 }
 
 .chat-header {
@@ -178,6 +193,7 @@ function handleModeChange(next: string | number | boolean) {
   display: flex;
   flex: 1;
   flex-direction: column;
+  width: 100%;
   min-height: 560px;
 }
 </style>
