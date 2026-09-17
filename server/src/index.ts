@@ -13,8 +13,8 @@ import userRouter from "./routes/user.js";
 const app = express();
 const port = env.PORT;
 
-// 关键环境变量校验（JWT_SECRET 弱密钥告警、PORT 非法值回退）——只告警不阻断启动
-checkEnv();
+// 关键环境变量校验（P0-3 告警不阻断；P1-10 生产模式 NODE_ENV=production 时弱 JWT_SECRET 直接拒绝启动）
+checkEnv(env.NODE_ENV === "production");
 
 // 数据目录（server/data 与 server/data/uploads），首次启动自动创建
 ensureDirs();

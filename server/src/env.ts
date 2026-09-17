@@ -17,6 +17,23 @@ const WEAK_JWT_SECRETS = [
   "please-change-me-to-a-long-random-string" // server/.env.example 模板值
 ];
 
+/** 生产环境要求的最小密钥长度（base64url 48 字节 ≈ 64 字符，这里放宽到 32） */
+const MIN_PRODUCTION_SECRET_LEN = 32;
+
+/** 判定 JWT_SECRET 不合规的原因；返回 null 表示合规 */
+function secretProblem(secret: string, strict: boolean): string | null {
+  if (WEAK_JWT_SECRETS.includes(secret)) {
+    return secret
+      ? `当前值为占位/模板值 "${secret}"`
+      : "当前未配置（server/.env 缺失或未填 JWT_SECRET）";
+  }
+  // 仅生产模式强制最小长度：开发模式下自定义短密钥不阻断、也不噪声告警
+  if (strict && secret.length < MIN_PRODUCTION_SECRET_LEN) {
+    return `当前值长度仅 ${secret.length} 字符，生产环境要求至少 ${MIN_PRODUCTION_SECRET_LEN} 字符的随机串`;
+  }
+  return null;
+}
+
 /** PORT 解析：非法值回退 3000（不阻断启动），由 checkEnv() 统一告警 */
 function resolvePort(): { port: number; error?: string } {
   const raw = (process.env.PORT ?? "").trim();
@@ -50,27 +67,33 @@ export const env = {
 /**
  * 启动时校验关键环境变量（由 src/index.ts 在监听前调用）。
  *
- * 口径：**只告警、不阻断**——本机比赛演示用默认值完全没问题，
- * 但上云 / 进 Docker 前必须替换 JWT_SECRET，否则任何人拿到源码都能伪造令牌。
+ * 口径：
+ * - 开发模式（默认）：**只告警、不阻断**——本机比赛演示用默认值完全没问题。
+ * - 生产模式（strict=true，NODE_ENV=production，即 Docker / 上云）：弱 JWT_SECRET **直接拒绝启动**，
+ *   防止带着公开默认密钥上线（任何人都能伪造管理员令牌）。
  */
-export function checkEnv(): void {
-  if (WEAK_JWT_SECRETS.includes(jwtSecret)) {
-    const reason = jwtSecret
-      ? `当前值为占位/模板值 "${jwtSecret}"`
-      : "当前未配置（server/.env 缺失或未填 JWT_SECRET）";
-    logger.warn(
-      [
-        "",
-        "⚠️  ============ 安全告警：JWT_SECRET 未设置为随机密钥 ============",
-        `  ${reason}`,
-        "  影响：JWT_SECRET 是令牌签名密钥，公开的默认值可被用来伪造任意用户令牌。",
-        "  本机演示 / 离线比赛：可忽略本条告警，功能不受影响。",
-        "  上云 / Docker 部署：必须在 server/.env 或环境变量中替换为足够长的随机串，例如",
-        "    node -e \"console.log(require('crypto').randomBytes(48).toString('base64url'))\"",
-        "=========================================================================",
-        ""
-      ].join("\n")
-    );
+export function checkEnv(strict = false): void {
+  const problem = secretProblem(jwtSecret, strict);
+  if (problem) {
+    const lines = [
+      "",
+      "⚠️  ============ 安全告警：JWT_SECRET 未设置为随机密钥 ============",
+      `  ${problem}`,
+      "  影响：JWT_SECRET 是令牌签名密钥，公开或过短的值可被用来伪造任意用户令牌。",
+      "  本机演示 / 离线比赛：可忽略本条告警，功能不受影响。",
+      "  上云 / Docker 部署：必须在 server/.env 或环境变量中替换为足够长的随机串，例如",
+      "    node -e \"console.log(require('crypto').randomBytes(48).toString('base64url'))\"",
+      "=========================================================================",
+      ""
+    ];
+    if (strict) {
+      console.error(lines.join("\n"));
+      console.error(
+        "[env] 生产环境禁止使用弱/过短 JWT_SECRET，已拒绝启动。请设置随机密钥后重试。"
+      );
+      process.exit(1);
+    }
+    logger.warn(lines.join("\n"));
   }
 
   if (resolvedPort.error) {
