@@ -78,36 +78,106 @@ function handleModeChange(next: string | number | boolean) {
 </script>
 
 <template>
-  <el-card shadow="never">
-    <template #header>
-      <div class="flex-bc flex-wrap gap-3">
-        <div>
-          <div class="font-medium">AI 健康助手</div>
-          <div class="text-xs text-gray-400 mt-1">
+  <div class="health-chat-wrapper">
+    <div class="health-chat-container">
+      <!-- 顶部标题栏 -->
+      <div class="chat-header">
+        <div class="chat-header-left">
+          <div class="chat-title">AI 健康助手</div>
+          <div class="chat-subtitle">
             基于您的健康档案与指标记录，解读血压、血糖、血脂并评估健康风险
           </div>
         </div>
-        <div class="flex items-center gap-3">
-          <el-button size="small" :icon="'Delete'" @click="handleClearChat">
+        <div class="chat-header-right">
+          <el-button
+            size="small"
+            plain
+            :icon="'Delete'"
+            @click="handleClearChat"
+          >
             清空对话
           </el-button>
-          <el-radio-group v-model="mode" @change="handleModeChange">
+          <el-radio-group
+            v-model="mode"
+            size="small"
+            @change="handleModeChange"
+          >
             <el-radio-button value="rules">规则引擎</el-radio-button>
             <el-radio-button value="llm">AI 大模型</el-radio-button>
           </el-radio-group>
         </div>
       </div>
-    </template>
 
-    <el-alert
-      v-if="noKey"
-      type="warning"
-      :closable="false"
-      show-icon
-      title="服务端尚未配置大模型 API Key（server/.env 的 LLM_API_KEY），「AI 大模型」暂不可用，建议先使用「规则引擎」模式"
-      class="mb-3"
-    />
+      <el-alert
+        v-if="noKey"
+        type="warning"
+        :closable="false"
+        show-icon
+        title="服务端尚未配置大模型 API Key（server/.env 的 LLM_API_KEY），「AI 大模型」暂不可用，建议先使用「规则引擎」模式"
+        class="mb-3"
+      />
 
-    <ChatGPT v-if="loaded" ref="chatComp" :history="history" />
-  </el-card>
+      <!-- 对话主体：居中窄列，deep-chat 占满剩余高度 -->
+      <div class="chat-body">
+        <ChatGPT v-if="loaded" ref="chatComp" :history="history" />
+      </div>
+    </div>
+  </div>
 </template>
+
+<style scoped>
+.health-chat-wrapper {
+  box-sizing: border-box;
+  display: flex;
+  justify-content: center;
+  min-height: calc(100vh - 100px);
+  padding: 20px 16px 16px;
+}
+
+.health-chat-container {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 860px;
+}
+
+.chat-header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.chat-header-left {
+  min-width: 0;
+}
+
+.chat-title {
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 1.3;
+  color: #111827;
+}
+
+.chat-subtitle {
+  margin-top: 4px;
+  font-size: 13px;
+  color: #9ca3af;
+}
+
+.chat-header-right {
+  display: flex;
+  flex-shrink: 0;
+  gap: 10px;
+  align-items: center;
+}
+
+.chat-body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 560px;
+}
+</style>

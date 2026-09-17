@@ -3,7 +3,7 @@ import "deep-chat";
 import { ref } from "vue";
 import { getToken } from "@/utils/auth";
 
-// AI 健康助手对话组件（保留 ChatGPT 风格皮肤）
+// AI 健康助手对话组件（豆包风格：居中窄列、白色气泡、大圆角输入框）
 const chatRef = ref();
 
 // 会话历史由服务端恢复（父组件拉 /api/health/chat/history 后传入），组件挂载时即生效
@@ -48,63 +48,104 @@ defineExpose({ resetChat });
 <template>
   <deep-chat
     ref="chatRef"
-    style="border-radius: 10px"
+    class="zhikang-chat"
+    style="flex: 1; min-height: 560px; border-radius: 16px"
     :messageStyles="{
       default: {
         shared: {
           bubble: {
-            maxWidth: '75%',
-            marginTop: '8px',
-            marginBottom: '8px',
-            borderRadius: '12px',
-            padding: '10px 14px',
+            maxWidth: '72%',
+            marginTop: '6px',
+            marginBottom: '6px',
+            borderRadius: '18px',
+            padding: '12px 16px',
             fontSize: '14px',
-            lineHeight: '1.6'
+            lineHeight: '1.7',
+            wordBreak: 'break-word'
           }
         },
         user: {
           outerContainer: { justifyContent: 'flex-end' },
           bubble: {
             backgroundColor: '#16a34a',
-            color: 'white'
+            color: '#ffffff',
+            borderBottomRightRadius: '4px'
           }
         },
         ai: {
           outerContainer: { justifyContent: 'flex-start' },
           bubble: {
-            backgroundColor: '#f4f4f5',
-            color: '#1f2937'
+            backgroundColor: '#ffffff',
+            color: '#1f2937',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04)',
+            borderBottomLeftRadius: '4px'
           }
         }
       }
     }"
     :avatars="{
-      ai: { styles: { position: 'start' } },
+      ai: {
+        src: '/logo.svg',
+        styles: {
+          position: 'start',
+          width: '32px',
+          height: '32px',
+          borderRadius: '8px'
+        }
+      },
       user: { default: { hidden: true } }
+    }"
+    :textInput="{
+      placeholder: { text: '输入健康问题，例如：我最近血压怎么样' },
+      autoResize: true,
+      container: {
+        default: {
+          borderRadius: '24px',
+          border: '1px solid #e5e7eb',
+          backgroundColor: '#ffffff',
+          boxShadow: '0 2px 12px rgba(0,0,0,0.06)',
+          padding: '4px 4px 4px 16px'
+        },
+        focus: {
+          border: '1px solid #16a34a',
+          boxShadow: '0 2px 16px rgba(22,163,74,0.12)'
+        }
+      },
+      input: {
+        default: {
+          fontSize: '14px',
+          color: '#1f2937',
+          placeholderColor: '#9ca3af'
+        }
+      }
     }"
     :submitButtonStyles="{
       submit: {
         container: {
           default: {
-            padding: '1px 0 0 5px',
-            backgroundColor: '#16a34a'
+            width: '36px',
+            height: '36px',
+            borderRadius: '50%',
+            backgroundColor: '#16a34a',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            margin: '0 4px'
           },
           hover: { backgroundColor: '#15803d' },
-          click: { backgroundColor: '#166534' }
+          click: { backgroundColor: '#166534' },
+          disabled: { backgroundColor: '#d1d5db' }
         },
         svg: {
           content:
-            '<?xml version=&quot;1.0&quot; ?> <svg viewBox=&quot;0 0 28 28&quot; xmlns=&quot;http://www.w3.org/2000/svg&quot;> <g> <path d=&quot;M21.66,12a2,2,0,0,1-1.14,1.81L5.87,20.75A2.08,2.08,0,0,1,5,21a2,2,0,0,1-1.82-2.82L5.46,13H11a1,1,0,0,0,0-2H5.46L3.18,5.87A2,2,0,0,1,5.86,3.25h0l14.65,6.94A2,2,0,0,1,21.66,12Z&quot;> </path> </g> </svg>',
+            '<?xml version=&quot;1.0&quot; ?> <svg viewBox=&quot;0 0 28 28&quot; xmlns=&quot;http://www.w3.org/2000/svg&quot;> <g> <path d=&quot;M21.66,12a2,2,0,0,1-1.14,1.81L5.87,20.75A2.08,2.08,0,0,1,5,21a2,2,0,0,1-1.82-2.82L5.46,13H11a1,1,0,0,0,0-2H5.46L3.18,5.87A2,2,0,0,1,5.86,3.25h0l14.65,6.94A2,2,0,0,1,21.66,12Z&quot; fill=&quot;white&quot;> </path> </g> </svg>',
           styles: {
-            default: {
-              filter:
-                'brightness(0) saturate(100%) invert(100%) sepia(28%) saturate(2%) hue-rotate(69deg) brightness(107%) contrast(100%)'
-            }
+            default: { width: '18px', height: '18px' }
           }
         }
       },
       loading: {
-        container: { default: { backgroundColor: 'white' } },
+        container: { default: { backgroundColor: 'transparent' } },
         svg: {
           styles: {
             default: {
@@ -116,25 +157,20 @@ defineExpose({ resetChat });
       },
       stop: {
         container: {
-          default: { backgroundColor: 'white' },
-          hover: { backgroundColor: '#dadada52' }
+          default: {
+            backgroundColor: '#16a34a',
+            borderRadius: '50%',
+            width: '36px',
+            height: '36px'
+          },
+          hover: { backgroundColor: '#15803d' }
         },
         svg: {
           content:
-            '<?xml version=&quot;1.0&quot; encoding=&quot;utf-8&quot;?> <svg viewBox=&quot;0 0 24 24&quot; xmlns=&quot;http://www.w3.org/2000/svg&quot;> <rect width=&quot;24&quot; height=&quot;24&quot; rx=&quot;4&quot; ry=&quot;4&quot; /> </svg>',
-          styles: {
-            default: {
-              width: '0.95em',
-              marginTop: '0.32em',
-              filter:
-                'brightness(0) saturate(100%) invert(72%) sepia(0%) saturate(3044%) hue-rotate(322deg) brightness(100%) contrast(96%)'
-            }
-          }
+            '<?xml version=&quot;1.0&quot; encoding=&quot;utf-8&quot;?> <svg viewBox=&quot;0 0 24 24&quot; xmlns=&quot;http://www.w3.org/2000/svg&quot;> <rect width=&quot;10&quot; height=&quot;10&quot; x=&quot;7&quot; y=&quot;7&quot; rx=&quot;2&quot; fill=&quot;white&quot; /> </svg>',
+          styles: { default: { width: '16px', height: '16px' } }
         }
       }
-    }"
-    :textInput="{
-      placeholder: { text: '输入健康问题，例如：我最近血压怎么样' }
     }"
     :history="props.history ?? []"
     :connect="connect"
@@ -144,3 +180,26 @@ defineExpose({ resetChat });
     }"
   />
 </template>
+
+<style scoped>
+/* deep-chat 是 light DOM，可通过 :deep 覆盖内部样式 */
+.zhikang-chat {
+  background: transparent;
+}
+
+:deep(.deep-chat) {
+  background: transparent !important;
+}
+
+/* 消息滚动区背景 */
+:deep(.deep-chat-messages) {
+  padding: 8px 4px !important;
+  background: transparent !important;
+}
+
+/* 输入区与消息区分隔 */
+:deep(.deep-chat-input) {
+  padding: 12px 4px 4px !important;
+  border-top: none !important;
+}
+</style>
