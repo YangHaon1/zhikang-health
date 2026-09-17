@@ -27,19 +27,24 @@ const insertChat = db.prepare(
    VALUES (?, ?, ?, datetime('now','localtime'))`
 );
 
-/** 从入参里取本轮提问：兼容 deep-chat 的 {messages:[{role,content}]} 与直接传 {question} */
+/** 从入参里取本轮提问：兼容 deep-chat 的 {messages:[{role,text/content}]} 与直接传 {question}/{text} */
 function extractQuestion(body: Record<string, unknown>): string {
   const messages = body.messages;
   if (Array.isArray(messages)) {
     const last = [...messages]
       .reverse()
       .find(
-        (m: { role?: string; content?: unknown }) =>
-          m?.role === "user" && typeof m.content === "string"
+        (m: { role?: string; content?: unknown; text?: unknown }) =>
+          m?.role === "user" &&
+          (typeof m.content === "string" || typeof m.text === "string")
       );
-    if (last) return String((last as { content: string }).content);
+    if (last)
+      return String(
+        (last as { content?: string; text?: string }).content ??
+          (last as { text?: string }).text
+      );
   }
-  // deep-chat 默认发送 { text: "..." } 格式
+  // deep-chat 也可能直接发 { text: "..." }
   if (typeof body.text === "string" && body.text.trim())
     return body.text.trim();
   return toText(body.question);
@@ -60,15 +65,18 @@ function extractLlmMessages(
   }
   return messages
     .filter(
-      (m: { role?: string; content?: unknown }) =>
+      (m: { role?: string; content?: unknown; text?: unknown }) =>
         (m?.role === "user" || m?.role === "assistant") &&
-        typeof m.content === "string" &&
-        m.content.trim()
+        (typeof m.content === "string" || typeof m.text === "string") &&
+        String(
+          (m as { content?: string; text?: string }).content ??
+            (m as { text?: string }).text
+        ).trim()
     )
     .slice(-10)
-    .map((m: { role: string; content: string }) => ({
+    .map((m: { role: string; content?: string; text?: string }) => ({
       role: m.role as "user" | "assistant",
-      content: m.content
+      content: String(m.content ?? m.text)
     }));
 }
 
