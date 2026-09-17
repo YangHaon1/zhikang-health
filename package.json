@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "dev:server": "tsx watch server/src/index.ts",
+    "dev:all": "concurrently -n server,web -c green,blue \"pnpm dev:server\" \"vite --open\"",
     "start": "pnpm build && tsx server/src/index.ts",
     "serve": "pnpm dev",
     "build": "rimraf dist && vite build",
@@ -102,6 +103,7 @@
     "@vue/devtools-api": "^8.2.1",
     "boxen": "^8.0.1",
     "code-inspector-plugin": "^2.0.7",
+    "concurrently": "^10.0.5",
     "cssnano": "^8.0.8",
     "eslint": "^10.9.0",
     "eslint-config-prettier": "^10.1.8",
