@@ -210,6 +210,10 @@ const transitionMain = defineComponent({
 }
 
 .main-content {
-  margin: 24px;
+  margin: 20px 24px 28px;
+
+  @media screen and (max-width: 760px) {
+    margin: 14px 12px 20px;
+  }
 }
 </style>

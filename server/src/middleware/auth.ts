@@ -1,6 +1,8 @@
 import type { NextFunction, Request, Response } from "express";
 import jwt from "jsonwebtoken";
+import db from "../db.js";
 import { env } from "../env.js";
+import { splitRoles } from "../types.js";
 
 /** JWT 载荷中携带的登录用户信息 */
 export interface JwtUser {
@@ -39,10 +41,23 @@ export function authMiddleware(
 
   try {
     const payload = jwt.verify(token, env.JWT_SECRET) as JwtUser;
+    // 令牌在有效期内并不代表账号仍有效：管理员停用/删除用户后，
+    // 必须立即拒绝其旧 access token，避免继续读写健康数据。
+    const account = db
+      .prepare("SELECT username, roles, status FROM users WHERE id = ?")
+      .get(payload.id) as
+      | { username: string; roles: string; status: number }
+      | undefined;
+    if (!account) return unauthorized(res);
+    if (Number(account.status) === 0) {
+      res.status(403).json({ code: 403, message: "账号已停用，请联系管理员" });
+      return;
+    }
     req.user = {
       id: payload.id,
-      username: payload.username,
-      roles: payload.roles ?? []
+      // 角色从数据库读取；管理员改角色后旧 token 不会继续保留旧权限。
+      username: account.username,
+      roles: splitRoles(account.roles)
     };
     next();
   } catch {

@@ -59,6 +59,11 @@ function findUserById(id: number): UserRow | undefined {
     UserRow | undefined;
 }
 
+/** 账号已停用时统一拒绝登录与刷新，避免管理员的停用操作形同虚设。 */
+function accountDisabled(res: import("express").Response): void {
+  res.status(403).json({ code: 403, message: "账号已停用，请联系管理员" });
+}
+
 /** 登录：bcrypt 校验密码 → 签发令牌 + 返回用户信息 */
 router.post("/login", (req, res) => {
   const { username, password } = req.body ?? {};
@@ -71,6 +76,11 @@ router.post("/login", (req, res) => {
     !bcrypt.compareSync(password, user.password_hash)
   ) {
     res.json({ code: 40001, message: "用户名或密码错误" });
+    return;
+  }
+
+  if (Number(user.status) === 0) {
+    accountDisabled(res);
     return;
   }
 
@@ -101,6 +111,10 @@ router.post("/refresh-token", (req, res) => {
     const { id } = jwt.verify(refreshToken, env.JWT_SECRET) as JwtUser;
     const user = findUserById(id);
     if (!user) throw new Error("user not found");
+    if (Number(user.status) === 0) {
+      accountDisabled(res);
+      return;
+    }
     res.json({ code: 0, message: "操作成功", data: signTokens(user) });
   } catch {
     res.status(401).json({ code: 401, message: "未登录或登录已过期" });

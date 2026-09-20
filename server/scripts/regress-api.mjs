@@ -361,6 +361,12 @@ let createdUserId = null;
     created.status === 200 && j(created).code === 0 && createdUserId != null,
     `status=${created.status} body=${created.text.slice(0, 140)}`
   );
+  const activeUser = await login(uname, "test123456");
+  check(
+    "新增的启用用户可登录",
+    activeUser.r.status === 200 && !!activeUser.token,
+    `status=${activeUser.r.status} body=${activeUser.r.text.slice(0, 120)}`
+  );
 
   const dup = await api("POST", "/api/user", {
     token: T.admin,
@@ -421,10 +427,33 @@ let createdUserId = null;
     JSON.stringify(au).slice(0, 200)
   );
 
+  const disabledLogin = await login(uname, "test123456");
+  check(
+    "停用用户无法登录（HTTP 403）",
+    disabledLogin.r.status === 403 && j(disabledLogin.r).code === 403,
+    `status=${disabledLogin.r.status} body=${disabledLogin.r.text.slice(0, 120)}`
+  );
+  const disabledToken = await api("GET", "/api/mine", {
+    token: activeUser.token
+  });
+  check(
+    "停用后旧 accessToken 立即失效（HTTP 403）",
+    disabledToken.status === 403 && j(disabledToken).code === 403,
+    `status=${disabledToken.status} body=${disabledToken.text.slice(0, 120)}`
+  );
+  const disabledRefresh = await api("POST", "/api/refresh-token", {
+    body: { refreshToken: activeUser.data?.refreshToken }
+  });
+  check(
+    "停用后 refreshToken 无法续期（HTTP 403）",
+    disabledRefresh.status === 403 && j(disabledRefresh).code === 403,
+    `status=${disabledRefresh.status} body=${disabledRefresh.text.slice(0, 120)}`
+  );
+
   // 改密码 → 新密码可登录、旧密码不可
   const pwd = await api("PUT", `/api/user/${createdUserId}`, {
     token: T.admin,
-    body: { password: "newpwd12345" }
+    body: { password: "newpwd12345", status: 1 }
   });
   check(
     "PUT /api/user/:id 重置密码 → 200",
