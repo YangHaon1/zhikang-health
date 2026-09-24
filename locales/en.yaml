@@ -1,0 +1,160 @@
+buttons:
+  pureAccountSettings: Account
+  pureLoginOut: LoginOut
+  pureLogin: Login
+  pureOpenSystemSet: Open System Configs
+  pureReload: Reload
+  pureCloseCurrentTab: Close CurrentTab
+  pureCloseLeftTabs: Close LeftTabs
+  pureCloseRightTabs: Close RightTabs
+  pureCloseOtherTabs: Close OtherTabs
+  pureCloseAllTabs: Close AllTabs
+  pureContentFullScreen: Content FullScreen
+  pureContentExitFullScreen: Content ExitFullScreen
+  pureClickCollapse: Collapse
+  pureClickExpand: Expand
+  pureConfirm: Confirm
+  pureSwitch: Switch
+  pureClose: Close
+  pureBackTop: BackTop
+  pureOpenText: Open
+  pureCloseText: Close
+  pureWatchMore: Watch More
+  pureMarkAsRead: Mark As Read
+search:
+  pureTotal: Total
+  pureHistory: History
+  pureCollect: Collect
+  pureDragSort: （Drag Sort）
+  pureEmpty: Empty
+  purePlaceholder: Search Menu
+panel:
+  pureSystemSet: System Configs
+  pureCloseSystemSet: Close System Configs
+  pureClearCacheAndToLogin: Clear cache and return to login page
+  pureClearCache: Clear Cache
+  pureThemeMode: Theme Mode
+  pureThemeModeLight: Light
+  pureThemeModeLightTip: Set sail freshly and light up the comfortable work interface
+  pureThemeModeDark: Dark
+  pureThemeModeDarkTip: Moonlight Overture, indulge in the tranquility and elegance of the night
+  pureThemeModeSystem: Auto
+  pureThemeModeSystemTip: Synchronize time, the interface naturally responds to morning and dusk
+  pureThemeColor: Theme Color
+  pureMenuLayout: Menu Layout
+  pureVerticalTip: The menu on the left is familiar and friendly
+  pureHorizontalTip: Top menu, concise overview
+  pureMixTip: Mixed menu, flexible
+  pureStretch: Stretch Page
+  pureStretchFixed: Fixed
+  pureStretchFixedTip: Compact pages make it easy to find the information you need
+  pureStretchCustom: Custom
+  pureStretchCustomTip: Minimum 1280, maximum 1600
+  pureTagsStyle: Tags Style
+  pureTagsStyleSmart: Smart
+  pureTagsStyleSmartTip: Smart tags add fun and brilliance
+  pureTagsStyleCard: Card
+  pureTagsStyleCardTip: Card tags for efficient browsing
+  pureTagsStyleChrome: Chrome
+  pureTagsStyleChromeTip: Chrome style is classic and elegant
+  pureFullScreenWatermark: FullScreen Watermark
+  pureEnableWatermark: Watermark
+  pureWatermarkText: Text
+  pureWatermarkTextPlaceholder: Please enter text
+  pureInterfaceDisplay: Interface Display
+  pureGreyModel: Grey Model
+  pureWeakModel: Weak Model
+  pureHiddenTags: Hidden Tags
+  pureHiddenFooter: Hidden Footer
+  pureMultiTagsCache: MultiTags Cache
+menus:
+  pureLogin: Login
+  pureUser: User Manage
+  purePageNotFound: "404"
+  pureAccessDenied: "403"
+  pureServerError: "500"
+  healthDashboard: Health Dashboard
+  healthAiHub: AI Center
+  healthProfile: My Health
+  healthRecords: Indicators
+  healthRecordsInput: Add Record
+  healthRecordsHistory: History
+  healthTrend: Trend Analysis
+  healthPlans: Action Plans
+  healthReport: AI Health Report
+  healthChat: AI Health Assistant
+  healthImport: Data Import
+  healthAnalytics: Group Analytics
+  healthAuthorizations: Authorizations
+  healthAudit: Audit Log
+  healthAiProfile: AI Health Profile
+  healthRisk: Risk Forecast
+  healthCompanion: AI Companions
+status:
+  pureLoad: Loading...
+  pureMessage: Message
+  pureNotify: Notify
+  pureTodo: Todo
+  pureNoMessage: No Message
+  pureNoNotify: No Notify
+  pureNoTodo: No Todo
+login:
+  pureUsername: Username
+  purePassword: Password
+  pureVerifyCode: VerifyCode
+  pureRemember: days no need to login
+  pureRememberInfo: After checking and logging in, will automatically log in to the system without entering your username and password within the specified number of days.
+  pureSure: Sure Password
+  pureForget: Forget Password?
+  pureLogin: Login
+  pureThirdLogin: Third Login
+  purePhoneLogin: Phone Login
+  pureQRCodeLogin: QRCode Login
+  pureRegister: Register
+  pureWeChatLogin: WeChat Login
+  pureAlipayLogin: Alipay Login
+  pureQQLogin: QQ Login
+  pureWeiBoLogin: Weibo Login
+  purePhone: Phone
+  pureSmsVerifyCode: SMS VerifyCode
+  pureBack: Back
+  pureTest: Mock Test
+  pureTip: After scanning the code, click "Confirm" to complete the login
+  pureDefinite: Definite
+  pureLoginSuccess: Login Success
+  pureLoginFail: Login Fail
+  pureRegisterSuccess: Regist Success
+  pureTickPrivacy: Please tick Privacy Policy
+  pureReadAccept: I have read it carefully and accept
+  purePrivacyPolicy: Privacy Policy
+  pureGetVerifyCode: Get VerifyCode
+  pureInfo: Seconds
+  pureUsernameReg: Please enter username
+  purePassWordReg: Please enter password
+  pureVerifyCodeReg: Please enter verify code
+  pureVerifyCodeCorrectReg: Please enter correct verify code
+  pureVerifyCodeSixReg: Please enter a 6-digit verify code
+  purePhoneReg: Please enter the phone
+  purePhoneCorrectReg: Please enter the correct phone number format
+  purePassWordRuleReg: The password format should be any combination of 8-18 digits
+  purePassWordSureReg: Please enter confirm password
+  purePassWordDifferentReg: The two passwords do not match!
+  purePassWordUpdateReg: Password has been updated
+  pureLoginExpired: Login expired, please login again
+tableBar:
+  pureList: List
+  pureLarge: Large
+  pureDefault: Default
+  pureSmall: Small
+  pureColumnSettings: ColumnSettings
+  pureCollapse: Collapse
+  pureExpand: Expand
+  pureRefresh: Refresh
+  pureDensity: Density
+  pureColumnDisplay: ColumnDisplay
+  pureReset: Reset
+  pureExitFullScreen: ExitFullScreen
+  pureFullScreen: FullScreen
+  purePinLeft: Pin Left
+  purePinRight: Pin Right
+  pureUnpin: Unpin

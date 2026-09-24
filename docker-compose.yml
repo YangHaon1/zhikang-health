@@ -1,0 +1,46 @@
+# 智康健康管理系统 · 一键部署
+#
+#   docker compose up -d --build      # 构建并启动
+#   浏览器打开 http://localhost:3000  # 单端口访问全站（前端 + /api + /uploads）
+#   docker compose logs -f            # 查看日志
+#   docker compose down               # 停止（server/data 里的数据保留）
+#
+# 账号：admin/admin123（管理员）、common/common123（普通用户），首次启动自动建库并写入。
+
+services:
+  zhikang:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: zhikang-health:1.0.0
+    container_name: zhikang-health
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      # 鉴权密钥：生产环境务必替换（可在同目录放 .env 文件，compose 会自动读取同名的 ${VAR}）
+      JWT_SECRET: ${JWT_SECRET:-zhikang-compose-change-me-please}
+      # 方案 B（真实大模型）Key，留空则「AI 大模型」模式自动降级提示，规则引擎照常可用
+      LLM_API_KEY: ${LLM_API_KEY:-}
+      # 可选：模型名与网关地址
+      # LLM_MODEL: doubao-1-5-pro-32k-250115
+      # LLM_BASE_URL: https://ark.cn-beijing.volces.com/api/v3
+    volumes:
+      # SQLite 库与上传的头像都在这里：容器重建 / 升级镜像数据都不丢
+      - ./server/data:/app/server/data
+    healthcheck:
+      # node:22-slim 里没有 wget/curl，健康检查用容器自带的 node http 请求：
+      # 200 → 退出码 0（healthy），其他状态码或请求失败 → 1（unhealthy）
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "require('http').get('http://127.0.0.1:3000/api/ping', r => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    restart: unless-stopped

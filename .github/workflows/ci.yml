@@ -1,0 +1,47 @@
+name: CI
+
+# 提交 / 提 PR 时的最小验证：能装、能过类型、能构建。
+# 说明：这里**不连数据库、不起服务**——数据库由服务启动时自动建表 + seed，
+# 前端构建也不依赖它，所以 CI 里跑的是纯静态检查。
+# 接口级的端到端验证走 `node server/scripts/regress-api.mjs`（需本机起服务）。
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    name: Typecheck & Build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      # 版本由 package.json 的 packageManager 字段决定（pnpm@12.4.2），
+      # 这里不再写 version，避免与 packageManager 冲突
+      - name: Install pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          run_install: false
+
+      - name: Install Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # 前端 + server/shared 唯一源码（规则引擎等）
+      - name: Typecheck (frontend)
+        run: pnpm typecheck
+
+      # 服务端严格类型检查（与前端分开，见 server/tsconfig.json）
+      - name: Typecheck (server)
+        run: pnpm exec tsc -p server/tsconfig.json --noEmit
+
+      - name: Build (frontend)
+        run: pnpm build

@@ -1,0 +1,193 @@
+.wave {
+  position: fixed;
+  height: 100%;
+  width: 80%;
+  left: 0;
+  bottom: 0;
+  z-index: -1;
+}
+
+.login-container {
+  width: 100vw;
+  height: 100vh;
+  max-width: 100%;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  grid-gap: 18rem;
+  padding: 0 2rem;
+}
+
+.img {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+}
+
+.img img {
+  width: 500px;
+}
+
+.login-box {
+  display: flex;
+  align-items: center;
+  text-align: center;
+  overflow: hidden;
+}
+
+.login-form {
+  width: 360px;
+}
+
+.avatar {
+  width: 350px;
+  height: 80px;
+}
+
+.login-form h2 {
+  text-transform: uppercase;
+  margin: 15px 0;
+  color: #075e45;
+  font:
+    bold 200% Consolas,
+    Monaco,
+    monospace;
+}
+
+/* ===== 品牌介绍区（登录页产品化：AI 健康平台入口） ===== */
+.brand-hero {
+  position: fixed;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 50vw;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(
+    135deg,
+    rgba(231, 245, 240, 0.9),
+    rgba(219, 234, 254, 0.7)
+  );
+}
+
+.brand-hero-inner {
+  max-width: 440px;
+  padding: 0 2rem;
+  color: #17382c;
+}
+
+.brand-badge {
+  display: inline-block;
+  padding: 4px 14px;
+  margin-bottom: 18px;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: #075e45;
+  background: #fff;
+  border: 1px solid #cfe8dc;
+  border-radius: 999px;
+  box-shadow: 0 2px 8px rgba(7, 94, 69, 0.08);
+}
+
+.brand-title {
+  margin: 0 0 12px;
+  font-size: 38px;
+  font-weight: 800;
+  line-height: 1.25;
+  color: #0b3b2c;
+}
+
+.brand-slogan {
+  margin: 0 0 28px;
+  font-size: 16px;
+  color: #4b6f60;
+}
+
+.brand-points {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 12px;
+  font-size: 14px;
+  color: #2f5a47;
+}
+
+.brand-points li {
+  position: relative;
+  padding-left: 22px;
+}
+
+.brand-points li::before {
+  content: "✓";
+  position: absolute;
+  left: 0;
+  top: 0;
+  font-weight: 800;
+  color: #10b981;
+}
+
+/* 登录表单卡片化 */
+.login-box {
+  z-index: 3;
+}
+
+.login-form {
+  background: rgba(255, 255, 255, 0.92);
+  border-radius: 24px;
+  padding: 32px 36px 28px;
+  box-shadow: 0 20px 48px rgba(7, 94, 69, 0.14);
+  backdrop-filter: blur(6px);
+}
+
+@media screen and (max-width: 1180px) {
+  .login-container {
+    grid-gap: 9rem;
+  }
+
+  .login-form {
+    width: 290px;
+  }
+
+  .login-form h2 {
+    font-size: 2.4rem;
+    margin: 8px 0;
+  }
+
+  .img img {
+    width: 360px;
+  }
+
+  .avatar {
+    width: 280px;
+    height: 80px;
+  }
+}
+
+@media screen and (max-width: 968px) {
+  .wave {
+    display: none;
+  }
+
+  .brand-hero {
+    display: none;
+  }
+
+  .img {
+    display: none;
+  }
+
+  .login-container {
+    grid-template-columns: 1fr;
+  }
+
+  .login-box {
+    justify-content: center;
+  }
+
+  .login-form {
+    padding: 26px 24px 22px;
+  }
+}
