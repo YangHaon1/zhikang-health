@@ -165,7 +165,9 @@ router.post("/health/plans", authMiddleware, (req, res) => {
   const riskKey = toText(body.riskKey).trim();
   const startDate = toText(body.startDate).trim();
   const endDate = toText(body.endDate).trim();
-  const source = toText(body.source) === "manual" ? "manual" : "rule";
+  const source = ["manual", "ai_coach"].includes(toText(body.source))
+    ? toText(body.source)
+    : "rule";
   const targetValue =
     body.targetValue === null ||
     body.targetValue === undefined ||

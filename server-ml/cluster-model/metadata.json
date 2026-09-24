@@ -1,0 +1,74 @@
+{
+  "version": "kmeans-v0.2",
+  "training_mode": "synthetic_fallback",
+  "real_samples": 0,
+  "synthetic_samples": 600,
+  "feature_count": 15,
+  "best_k": 3,
+  "silhouette": 0.066,
+  "k_scores": { "3": 0.066, "4": 0.063, "5": 0.056, "6": 0.05 },
+  "features": [
+    "sleep_hours_mean",
+    "sleep_below7_days",
+    "sleep_quality_avg",
+    "exercise_min_sum",
+    "exercise_days",
+    "stress_avg",
+    "stress_high_days",
+    "diet_reg_ratio",
+    "mood_avg",
+    "study_hours",
+    "sedentary_hours",
+    "bedtime_hour",
+    "is_off_campus",
+    "grade_code",
+    "bmi"
+  ],
+  "clusters": [
+    {
+      "clusterId": 0,
+      "count": 247,
+      "name": "健康平衡型",
+      "tags": "作息、运动、压力较均衡",
+      "suggestions": ["保持当前规律"],
+      "center": {
+        "睡眠时长": 7.31,
+        "睡眠不足天数": 2.13,
+        "平均压力": 2.0,
+        "运动频次": 2.48,
+        "饮食规律": 0.61,
+        "久坐时长": 6.89
+      }
+    },
+    {
+      "clusterId": 1,
+      "count": 117,
+      "name": "作息失衡型",
+      "tags": "睡眠偏短、久坐偏长",
+      "suggestions": ["固定23:30前入睡", "每学习50分钟活动5分钟"],
+      "center": {
+        "睡眠时长": 7.07,
+        "睡眠不足天数": 2.66,
+        "平均压力": 1.88,
+        "运动频次": 2.53,
+        "饮食规律": 0.58,
+        "久坐时长": 8.4
+      }
+    },
+    {
+      "clusterId": 2,
+      "count": 236,
+      "name": "轻度调整型",
+      "tags": "久坐偏长",
+      "suggestions": ["学习50分钟活动5分钟"],
+      "center": {
+        "睡眠时长": 7.29,
+        "睡眠不足天数": 2.97,
+        "平均压力": 1.83,
+        "运动频次": 2.44,
+        "饮食规律": 0.57,
+        "久坐时长": 9.14
+      }
+    }
+  ]
+}

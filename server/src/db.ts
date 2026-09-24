@@ -155,6 +155,10 @@ export function initDb(): void {
   migrateProfiles();
   migrateUsers();
   migrateRecords();
+  ensureStudentProfile();
+  migrateDailyHealth();
+  ensureRiskPredictions();
+  ensureHealthSurvey();
   seedUsers();
 }
 
@@ -577,4 +581,96 @@ function seedUsers(): void {
   tx();
 }
 
+/**
+ * V2.0 P0-1：学生画像表（student_profile）。
+ * 独立于通用 profiles：profiles 是通用档案，本表专门存大学生亚健康建模需要的
+ * 作息/年级/专业/久坐等字段。一用户一条，UPSERT。幂等创建，不影响旧表。
+ */
+const STUDENT_PROFILE_DDL = `
+CREATE TABLE IF NOT EXISTS student_profile (
+  user_id        INTEGER PRIMARY KEY REFERENCES users(id),
+  grade          TEXT    DEFAULT '',   -- 年级：大一/大二/大三/大四/研一/研二/研三
+  major          TEXT    DEFAULT '',   -- 专业
+  is_off_campus  INTEGER DEFAULT 0,    -- 是否校外住宿 0否1是
+  bedtime        TEXT    DEFAULT '',   -- 日常就寝时间 HH:mm
+  wake_time      TEXT    DEFAULT '',   -- 日常起床时间 HH:mm
+  sedentary_hours REAL   DEFAULT 0,    -- 每日久坐时长（小时）
+  study_hours    REAL    DEFAULT 0,    -- 每日学习时长（小时）
+  update_time    TEXT    DEFAULT (datetime('now','localtime'))
+);
+`;
+export function ensureStudentProfile(): void {
+  db.exec(STUDENT_PROFILE_DDL);
+}
+
+/**
+ * V2.0 P0-1：daily_health_records 亚健康核心指标补列（幂等）。
+ * 旧表只有 sleep_hours/exercise_minutes/mood_score/diet_status，
+ * 新增睡眠质量、压力水平、饮食规律度——大学生亚健康建模核心输入。
+ * ADD COLUMN 带默认值，旧行自动填默认，零破坏、可回滚。
+ */
+export function migrateDailyHealth(): void {
+  const columns = db
+    .prepare("SELECT name FROM pragma_table_info('daily_health_records')")
+    .all() as Array<{ name: string }>;
+  const existing = new Set(columns.map(c => c.name));
+  const additions: Array<[string, string]> = [
+    ["sleep_quality", "INTEGER DEFAULT 0"], // 1差 2一般 3好
+    ["stress_level", "INTEGER DEFAULT 0"], // 1小 2中 3大
+    ["diet_regularity", "TEXT DEFAULT ''"] // good 规律 / normal 一般 / poor 不规律
+  ];
+  const added: string[] = [];
+  for (const [name, ddl] of additions) {
+    if (existing.has(name)) continue;
+    db.exec(`ALTER TABLE daily_health_records ADD COLUMN ${name} ${ddl}`);
+    added.push(name);
+  }
+  if (added.length)
+    logger.info(`[db] daily_health_records 补列：${added.join(", ")}`);
+}
+
+/** V2.0 P1-1B：ML 风险预测快照表（幂等）。 */
+export function ensureRiskPredictions(): void {
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS risk_predictions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL REFERENCES users(id),
+      risk_level TEXT NOT NULL DEFAULT '',
+      risk_probability REAL NOT NULL DEFAULT 0,
+      data_quality TEXT NOT NULL DEFAULT '',
+      shap_factors TEXT NOT NULL DEFAULT '[]',
+      model_version TEXT NOT NULL DEFAULT '',
+      created_at TEXT DEFAULT (datetime('now','localtime'))
+    );
+    CREATE INDEX IF NOT EXISTS idx_risk_user_time ON risk_predictions(user_id, created_at DESC);
+  `);
+}
+
+/** V2.1 P1-1a：大学生生活方式调研表（幂等，未来模型真实标签来源）。 */
+export function ensureHealthSurvey(): void {
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS health_survey (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL REFERENCES users(id),
+      survey_version TEXT NOT NULL DEFAULT 'v1',
+      sleep_hours_avg REAL,
+      sleep_quality INTEGER,
+      stay_up_freq INTEGER,
+      study_pressure INTEGER,
+      exam_pressure INTEGER,
+      mood_state INTEGER,
+      exercise_times INTEGER,
+      exercise_min INTEGER,
+      breakfast INTEGER,
+      diet_regular INTEGER,
+      sedentary_hours REAL,
+      phone_hours REAL,
+      risk_score INTEGER NOT NULL DEFAULT 0,
+      lifestyle_risk_label TEXT NOT NULL DEFAULT 'low',
+      is_anonymous INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT DEFAULT (datetime('now','localtime'))
+    );
+    CREATE INDEX IF NOT EXISTS idx_survey_user ON health_survey(user_id, created_at DESC);
+  `);
+}
 export default db;

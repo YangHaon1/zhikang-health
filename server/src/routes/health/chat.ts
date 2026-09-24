@@ -14,8 +14,27 @@ import { callLlm, llmAvailable } from "../../llm.js";
 import { profileForEngine, recordsForEngine, toText } from "./common.js";
 import { recentReportSummaries } from "./report.js";
 import { buildHealthContext } from "../../services/health-context.js";
+import {
+  COACH_ROLE_PROMPT,
+  buildCoachContext,
+  buildKnowledgeContext
+} from "../../services/coach-context.js";
 
 const router = Router();
+function riskFactorLabels(userId: number): string[] {
+  try {
+    const row = db
+      .prepare(
+        "SELECT shap_factors FROM risk_predictions WHERE user_id = ? ORDER BY id DESC LIMIT 1"
+      )
+      .get(userId) as { shap_factors: string } | undefined;
+    if (!row) return [];
+    const arr = JSON.parse(row.shap_factors) as Array<{ label: string }>;
+    return arr.slice(0, 3).map(a => a.label);
+  } catch {
+    return [];
+  }
+}
 
 /** 对话历史返回给前端的最大条数（按最近若干轮，够恢复会话即可） */
 const CHAT_HISTORY_LIMIT = 50;
@@ -166,10 +185,18 @@ router.post("/health/chat", authMiddleware, async (req, res) => {
     // V1.5：把当前用户的结构化健康摘要作为 system 上下文前置注入，
     // 让大模型能引用真实档案/指标/报告；无数据时不注入（空串），不影响对话。
     const healthCtx = buildHealthContext(userId);
+    const coachCtx = buildCoachContext(userId);
+    const knowCtx = buildKnowledgeContext({
+      query: question,
+      riskFactors: riskFactorLabels(userId)
+    });
+    const systemText = [COACH_ROLE_PROMPT, healthCtx, coachCtx, knowCtx]
+      .filter(Boolean)
+      .join("\n\n");
     const historyMessages = extractLlmMessages(body);
-    const messages = healthCtx
+    const messages = systemText
       ? ([
-          { role: "system" as const, content: healthCtx },
+          { role: "system" as const, content: systemText },
           ...historyMessages
         ] as Array<{ role: "system" | "user" | "assistant"; content: string }>)
       : historyMessages;

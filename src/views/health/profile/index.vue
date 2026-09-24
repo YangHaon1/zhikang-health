@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 /**
  * M3 引导式健康档案：把原「大表单」改造为三步流程
  *  Step1 基础信息 → Step2 生活习惯 → Step3 健康目标 → 完成页
@@ -13,6 +13,7 @@ import BasicInfoStep from "@/components/health/profile/BasicInfoStep.vue";
 import LifestyleStep from "@/components/health/profile/LifestyleStep.vue";
 import GoalStep from "@/components/health/profile/GoalStep.vue";
 import ProfileComplete from "@/components/health/profile/ProfileComplete.vue";
+import StudentProfileCard from "@/components/health/StudentProfileCard.vue";
 
 defineOptions({ name: "HealthProfile" });
 
@@ -102,6 +103,9 @@ onMounted(loadProfile);
     <LifestyleStep v-else-if="step === 2" v-model="form" />
     <GoalStep v-else-if="step === 3" v-model="form" />
     <ProfileComplete v-else :profile="form" />
+
+    <!-- V2.0 P0-1：学生健康画像（完成档案后展示） -->
+    <StudentProfileCard v-if="step === 4" />
 
     <div v-if="step < 4" class="nav-row">
       <el-button v-if="step > 1" @click="back">上一步</el-button>

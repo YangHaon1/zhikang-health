@@ -31,6 +31,54 @@
       </div>
     </el-card>
 
+    <!-- P1-2：调研聚合卡 -->
+    <el-card v-if="data?.survey" shadow="never" class="mb-4">
+      <h4>大学生健康调研洞察</h4>
+      <div class="survey-grid">
+        <div>
+          <span class="s-num">{{ data.survey.totalParticipants }}</span>
+          <div class="s-lab">参与调研人数</div>
+        </div>
+        <div>
+          <span class="s-num"
+            >{{ data.survey.averageMetrics.sleepHours }}h</span
+          >
+          <div class="s-lab">平均睡眠</div>
+        </div>
+        <div>
+          <span class="s-num">{{
+            data.survey.averageMetrics.stressLevel
+          }}</span>
+          <div class="s-lab">平均压力</div>
+        </div>
+        <div>
+          <span class="s-num"
+            >{{ data.survey.averageMetrics.sedentaryHours }}h</span
+          >
+          <div class="s-lab">平均久坐</div>
+        </div>
+      </div>
+      <div class="risk-dist" style="margin-top: 12px">
+        <span>风险倾向：</span>
+        <el-tag type="success" plain
+          >低 {{ data.survey.riskDistribution.low }}</el-tag
+        >
+        <el-tag type="warning" plain
+          >中 {{ data.survey.riskDistribution.medium }}</el-tag
+        >
+        <el-tag type="danger" plain
+          >高 {{ data.survey.riskDistribution.high }}</el-tag
+        >
+      </div>
+      <p
+        v-if="data.survey.clusterInfo"
+        style="margin-top: 10px; font-size: 12px; color: #9ca3af"
+      >
+        AI 模型：LightGBM + KMeans（{{ data.survey.clusterInfo.version }}）·
+        数据模式 {{ data.survey.clusterInfo.trainingMode }} ·
+        当前冷启动阶段，真实调研数据持续积累中
+      </p>
+    </el-card>
     <!-- 加载 / 空态 -->
     <el-card v-if="loading && !data" shadow="never">
       <el-skeleton :rows="6" animated />
@@ -169,7 +217,7 @@ const minSample = ANALYTICS_MIN_SAMPLE;
 
 const loading = ref(false);
 const exporting = ref<"" | "csv" | "json">("");
-const data = ref<AnalyticsOverview | null>(null);
+const data = ref<(AnalyticsOverview & { survey?: any }) | null>(null);
 
 const scoreRef = ref<HTMLDivElement>();
 const riskRef = ref<HTMLDivElement>();
@@ -487,5 +535,30 @@ onBeforeUnmount(() => {
   min-height: 20px;
   font-size: 12px;
   color: var(--el-text-color-secondary);
+}
+
+.survey-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-top: 12px;
+}
+
+.s-num {
+  font-size: 26px;
+  font-weight: 800;
+  color: #0f766e;
+}
+
+.s-lab {
+  margin-top: 4px;
+  font-size: 12px;
+  color: #6b7280;
+}
+
+@media (width <= 640px) {
+  .survey-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
 }
 </style>

@@ -208,6 +208,17 @@ const healthRiskRouter = {
   }
 };
 
+const healthSurveyRouter = {
+  path: "/health/survey",
+  name: "HealthSurvey",
+  meta: {
+    icon: "ri:survey-line",
+    title: "健康调研",
+    rank: 12,
+    roles: ["admin", "common"]
+  }
+};
+
 const healthCompanionRouter = {
   path: "/health/companion",
   name: "HealthCompanion",
@@ -235,6 +246,7 @@ export const asyncRoutes = [
   healthAuditRouter,
   healthAiProfileRouter,
   healthRiskRouter,
+  healthSurveyRouter,
   healthCompanionRouter,
   systemUserRouter
 ];

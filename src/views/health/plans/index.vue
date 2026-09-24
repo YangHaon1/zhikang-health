@@ -23,6 +23,53 @@
       </div>
     </el-card>
 
+    <!-- P2-2 P2：AI 复评报告 -->
+    <el-card shadow="never" class="review-card" style="margin-bottom: 16px">
+      <div class="header-row">
+        <div>
+          <h4 style="margin: 0 0 4px">AI 复评报告</h4>
+          <p style="margin: 0; font-size: 12px; color: #9ca3af">
+            根据计划完成情况与近期数据生成
+          </p>
+        </div>
+        <el-select
+          v-model="reviewPlanId"
+          placeholder="选择计划"
+          style="width: 180px; margin-right: 8px"
+        >
+          <el-option
+            v-for="pl in plans"
+            :key="pl.id"
+            :label="pl.title"
+            :value="pl.id"
+          />
+        </el-select>
+        <el-button
+          type="primary"
+          plain
+          :loading="reviewLoading"
+          :disabled="!plans.length"
+          @click="runReview"
+          >生成复评报告</el-button
+        >
+      </div>
+      <div v-if="review" style="margin-top: 12px">
+        <p><b>完成率：</b>{{ review.completionRate }}%</p>
+        <p>{{ review.evaluation }}</p>
+        <div v-for="(ch, i) in review.changes" :key="i" style="font-size: 13px">
+          {{ ch.metric }}：{{ ch.before }} → {{ ch.after }}（{{
+            ch.trend === "improve"
+              ? "↑ 改善"
+              : ch.trend === "decline"
+                ? "↓ 下降"
+                : "— 持平"
+          }}）
+        </div>
+        <p v-if="review.nextSuggestions.length" style="margin-top: 8px">
+          <b>下一步：</b>{{ review.nextSuggestions.join("；") }}
+        </p>
+      </div>
+    </el-card>
     <!-- 计划列表 -->
     <div v-if="loading" class="state-box">
       <el-skeleton :rows="3" animated />
@@ -406,6 +453,22 @@ const drawerSize = computed(() => (isNarrow.value ? "92%" : "480px"));
 const dialogWidth = computed(() => (isNarrow.value ? "94%" : "640px"));
 
 const plans = ref<HealthPlan[]>([]);
+const review = ref<any>(null);
+const reviewPlanId = ref<number | null>(null);
+const reviewLoading = ref(false);
+async function runReview() {
+  if (!reviewPlanId.value && plans.value.length)
+    reviewPlanId.value = plans.value[0].id;
+  if (!reviewPlanId.value) return;
+  reviewLoading.value = true;
+  try {
+    const { getHealthAgentReview } = await import("@/api/health");
+    const r = await getHealthAgentReview(reviewPlanId.value!);
+    if (r.code === 0) review.value = r.data;
+  } finally {
+    reviewLoading.value = false;
+  }
+}
 const loading = ref(false);
 const genLoading = ref(false);
 const saving = ref(false);

@@ -8,6 +8,8 @@
  */
 import { Router } from "express";
 import db from "../../db.js";
+import fs from "node:fs";
+import path from "node:path";
 import { adminOnly, authMiddleware } from "../../middleware/auth.js";
 import { profileForEngine, recordsForEngine, toText } from "./common.js";
 import {
@@ -64,9 +66,84 @@ function currentOverview(): AnalyticsOverview {
   return buildAnalyticsOverview(collectAnalyticsUsers());
 }
 
+/** P1-2：health_survey 调研聚合（脱敏，无个人信息） */
+function surveyStats() {
+  const total = (
+    db.prepare("SELECT COUNT(*) c FROM health_survey").get() as { c: number }
+  ).c;
+  if (!total) {
+    return {
+      totalParticipants: 0,
+      riskDistribution: { low: 0, medium: 0, high: 0 },
+      averageMetrics: {
+        sleepHours: 0,
+        stressLevel: 0,
+        exerciseMinutes: 0,
+        sedentaryHours: 0
+      }
+    };
+  }
+  const dist = db
+    .prepare(
+      "SELECT lifestyle_risk_label l, COUNT(*) c FROM health_survey GROUP BY lifestyle_risk_label"
+    )
+    .all() as Array<{ l: string; c: number }>;
+  const avg = db
+    .prepare(
+      `SELECT AVG(sleep_hours_avg) s, AVG(study_pressure) p,
+              AVG(exercise_min) e, AVG(sedentary_hours) d FROM health_survey`
+    )
+    .get() as {
+    s: number | null;
+    p: number | null;
+    e: number | null;
+    d: number | null;
+  };
+  const clusterMetaPath = path.resolve(
+    process.cwd(),
+    "..",
+    "server-ml",
+    "cluster-model",
+    "metadata.json"
+  );
+  let clusterInfo: Record<string, unknown> = {};
+  try {
+    if (fs.existsSync(clusterMetaPath)) {
+      const m = JSON.parse(fs.readFileSync(clusterMetaPath, "utf-8"));
+      clusterInfo = {
+        version: m.model_version,
+        silhouette: m.silhouette,
+        trainingMode: m.training_mode,
+        realSamples: m.real_samples
+      };
+    }
+  } catch {
+    /* ignore */
+  }
+  return {
+    totalParticipants: total,
+    riskDistribution: {
+      low: dist.find(r => r.l === "low")?.c ?? 0,
+      medium: dist.find(r => r.l === "medium")?.c ?? 0,
+      high: dist.find(r => r.l === "high")?.c ?? 0
+    },
+    averageMetrics: {
+      sleepHours: Math.round((avg.s || 0) * 10) / 10,
+      stressLevel: Math.round((avg.p || 0) * 10) / 10,
+      exerciseMinutes: Math.round(avg.e || 0),
+      sedentaryHours: Math.round((avg.d || 0) * 10) / 10
+    },
+    clusterInfo
+  };
+}
+
 /** GET /api/health/analytics —— 群体健康看板（脱敏聚合，admin 专属） */
 router.get("/health/analytics", authMiddleware, adminOnly, (_req, res) => {
-  res.json({ code: 0, message: "操作成功", data: currentOverview() });
+  res.json({
+    code: 0,
+    message: "操作成功",
+    data: { ...currentOverview(), survey: surveyStats() }
+  });
 });
 
 /**

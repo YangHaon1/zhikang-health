@@ -1,0 +1,16 @@
+{
+  "model_version": "lgbm-v0.3",
+  "training_mode": "synthetic_only",
+  "real_samples": 0,
+  "synthetic_samples": 4000,
+  "label_distribution": {
+    "low": 220,
+    "medium": 2385,
+    "high": 1395
+  },
+  "metrics": {
+    "accuracy": 0.981,
+    "macro_f1": 0.972,
+    "auc": 0.999
+  }
+}

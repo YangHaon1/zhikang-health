@@ -9,8 +9,11 @@ import {
   getHealthProfile,
   getHealthRecords,
   getHealthPlansToday,
+  getStudentProfile,
+  getHealthRisk,
   seedHealthRecords
 } from "@/api/health";
+import type { StudentProfile, RiskPredictView } from "@/api/health";
 import TodayScoreCard from "@/components/health/TodayScoreCard.vue";
 import TodayStatusCard from "@/components/health/TodayStatusCard.vue";
 import AIAdviceCard from "@/components/health/AIAdviceCard.vue";
@@ -110,6 +113,14 @@ const quickLinks = [
     to: "/health/report",
     bg: "#ecfeff",
     color: "#0e7490"
+  },
+  {
+    icon: "ri:survey-line",
+    title: "健康调研",
+    desc: "大学生生活方式调研",
+    to: "/health/survey",
+    bg: "#f5f3ff",
+    color: "#6d28d9"
   }
 ];
 // 管理员可一键生成演示数据（roles 登录后固定，此处直接读一次即可）
@@ -173,6 +184,105 @@ async function loadDaily() {
     /* 驾驶舱加载失败不影响原指标/趋势 */
   }
 }
+
+/** V2.0：学生画像（作息/久坐等） */
+const studentProfile = ref<StudentProfile | null>(null);
+async function loadStudent() {
+  try {
+    const res = await getStudentProfile();
+    studentProfile.value = res.data ?? null;
+  } catch {
+    studentProfile.value = null;
+  }
+}
+
+/** V2.1：ML 风险预测 + 健康类型（失败静默，不阻塞首页） */
+const riskView = ref<RiskPredictView | null>(null);
+async function loadRisk() {
+  try {
+    const res = await getHealthRisk();
+    if (res.code === 0) riskView.value = res.data;
+  } catch {
+    riskView.value = null;
+  }
+}
+const riskLevelText = computed(() => {
+  const l = riskView.value?.riskLevel;
+  return l === "high"
+    ? "高风险倾向"
+    : l === "medium"
+      ? "中风险倾向"
+      : l === "low"
+        ? "低风险倾向"
+        : "";
+});
+
+/**
+ * V2.0 五维健康画像（纯前端按已有今日数据规则估算，0-100）。
+ * 不做疾病诊断，只反映近期生活习惯；无数据维度为 null（展示"暂未记录"）。
+ */
+const fiveDimensions = computed(() => {
+  const t = dailyToday.value?.today as any;
+  const score = (v: number, good: number, bad: number) =>
+    Math.max(0, Math.min(100, Math.round(((v - bad) / (good - bad)) * 100)));
+
+  // 睡眠健康：时长 7-9h 满分
+  const sleep = t?.sleepHours != null ? score(t.sleepHours, 8, 4) : null;
+  // 运动健康：每日 30min 满分
+  const exercise =
+    t?.exerciseMinutes != null ? score(t.exerciseMinutes, 60, 0) : null;
+  // 压力状态：stressLevel 1小=好 3大=差
+  const stress = t?.stressLevel
+    ? t.stressLevel === 1
+      ? 85
+      : t.stressLevel === 2
+        ? 60
+        : 35
+    : null;
+  // 饮食规律
+  const diet =
+    t?.dietRegularity === "good"
+      ? 88
+      : t?.dietRegularity === "normal"
+        ? 62
+        : t?.dietRegularity === "poor"
+          ? 35
+          : null;
+  // 作息规律：有学生就寝/起床时间记录即视为规律
+  const routine =
+    studentProfile.value?.bedtime && studentProfile.value?.wakeTime ? 75 : null;
+
+  return [
+    { key: "sleep", label: "睡眠健康", value: sleep, color: "#6366f1" },
+    { key: "exercise", label: "运动健康", value: exercise, color: "#16a34a" },
+    { key: "stress", label: "压力状态", value: stress, color: "#f59e0b" },
+    { key: "diet", label: "饮食规律", value: diet, color: "#0ea5e9" },
+    { key: "routine", label: "作息规律", value: routine, color: "#8b5cf6" }
+  ];
+});
+
+/** V2.0 亚健康风险因素（生活习惯口径，非疾病诊断） */
+const riskFactors = computed(() => {
+  const t = dailyToday.value?.today as any;
+  const list: string[] = [];
+  if (t?.sleepHours != null && t.sleepHours < 6.5) list.push("睡眠不足");
+  if (t?.stressLevel === 3) list.push("压力偏高");
+  if (t?.exerciseMinutes != null && t.exerciseMinutes < 20)
+    list.push("运动不足");
+  if (t?.dietRegularity === "poor") list.push("饮食不规律");
+  if (studentProfile.value && studentProfile.value.sedentaryHours >= 10)
+    list.push("久坐时间过长");
+  return list;
+});
+
+/** V2.0 亚健康状态总评 */
+const subHealthLevel = computed(() => {
+  if (!dailyToday.value?.today) return { text: "待记录", color: "#9ca3af" };
+  const n = riskFactors.value.length;
+  if (n >= 3) return { text: "亚健康风险偏高", color: "#dc2626" };
+  if (n === 1 || n === 2) return { text: "轻度亚健康信号", color: "#f59e0b" };
+  return { text: "状态良好", color: "#16a34a" };
+});
 
 /** 汇总文案（有无效记录时如实说明，不让条数悄悄变少） */
 const summaryText = computed(() => {
@@ -371,6 +481,8 @@ onMounted(() => {
   loadData();
   loadTodayPlans();
   loadDaily();
+  loadStudent();
+  loadRisk();
 });
 
 onBeforeUnmount(() => {
@@ -391,6 +503,13 @@ onBeforeUnmount(() => {
           你的健康指数
           <b>{{ dailyToday.index.score }}</b> 分 ·
           {{ dailyToday.index.levelText }}
+        </p>
+        <p v-if="riskView" class="hero-ai-line">
+          <iconify-icon icon="ri:radar-line" />
+          {{ riskLevelText }}
+          <template v-if="riskView.healthType">
+            · 行为画像：{{ riskView.healthType.name }}</template
+          >
         </p>
         <p v-else class="hero-description">
           {{
@@ -446,6 +565,83 @@ onBeforeUnmount(() => {
       <TodayScoreCard :index="dailyToday?.index ?? null" />
       <TodayStatusCard :today="dailyToday?.today ?? null" />
       <AIAdviceCard :advice="dailyToday?.advice ?? []" />
+    </section>
+
+    <!-- V2.0：学生亚健康驾驶舱（五维画像 + 风险因素，数据来自 /daily/today 与 student-profile） -->
+    <section class="subhealth-grid">
+      <el-card shadow="never" class="subhealth-card">
+        <template #header>
+          <div class="card-heading">
+            <div>
+              <p>STUDENT HEALTH</p>
+              <h2>学生健康状态</h2>
+            </div>
+            <el-tag
+              :color="subHealthLevel.color"
+              style="color: #fff; border: none"
+            >
+              {{ subHealthLevel.text }}
+            </el-tag>
+          </div>
+        </template>
+        <div class="dim-list">
+          <div v-for="d in fiveDimensions" :key="d.key" class="dim-row">
+            <span class="dim-label">{{ d.label }}</span>
+            <div class="dim-bar">
+              <div
+                class="dim-fill"
+                :style="
+                  d.value != null
+                    ? { width: d.value + '%', background: d.color }
+                    : { width: '100%', background: '#e5e7eb' }
+                "
+              />
+            </div>
+            <span class="dim-value">{{ d.value != null ? d.value : "—" }}</span>
+          </div>
+        </div>
+      </el-card>
+
+      <el-card shadow="never" class="subhealth-card">
+        <template #header>
+          <div class="card-heading">
+            <div>
+              <p>RISK FACTORS</p>
+              <h2>亚健康风险因素</h2>
+            </div>
+            <span>生活习惯口径，非疾病诊断</span>
+          </div>
+        </template>
+        <template v-if="riskFactors.length">
+          <div class="risk-tags">
+            <el-tag
+              v-for="r in riskFactors"
+              :key="r"
+              type="warning"
+              effect="plain"
+              size="large"
+              class="risk-tag"
+            >
+              ⚠ {{ r }}
+            </el-tag>
+          </div>
+          <div class="factor-more" @click="router.push('/health/risk')">
+            查看 AI 风险预测与原因解释 →
+          </div>
+        </template>
+        <el-empty
+          v-else
+          description="暂未发现明显亚健康风险因素"
+          :image-size="60"
+        />
+        <div class="coach-entry" @click="router.push('/health/chat')">
+          <iconify-icon icon="ri:customer-service-2-line" width="22" />
+          <div>
+            <p class="coach-title">AI 健康教练</p>
+            <p class="coach-desc">根据你的健康数据，给出个性化改善建议 →</p>
+          </div>
+        </div>
+      </el-card>
     </section>
     <QuickDailyRecord
       v-model:visible="recordDialogVisible"
@@ -725,6 +921,110 @@ onBeforeUnmount(() => {
   .cockpit-grid {
     grid-template-columns: 1fr;
   }
+}
+
+/* V2.0：学生亚健康两栏 */
+.subhealth-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+@media (width <= 960px) {
+  .subhealth-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.subhealth-card {
+  border: 1px solid #e6f0ea;
+  border-radius: 16px;
+}
+
+.dim-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.dim-row {
+  display: grid;
+  grid-template-columns: 72px 1fr 36px;
+  gap: 12px;
+  align-items: center;
+}
+
+.dim-label {
+  font-size: 13px;
+  color: #4b5563;
+}
+
+.dim-bar {
+  height: 8px;
+  overflow: hidden;
+  background: #f0f4f1;
+  border-radius: 999px;
+}
+
+.dim-fill {
+  height: 100%;
+  border-radius: 999px;
+  transition: width 0.6s ease;
+}
+
+.dim-value {
+  font-size: 14px;
+  font-weight: 700;
+  color: #17382c;
+  text-align: right;
+}
+
+.risk-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.risk-tag {
+  padding: 8px 14px;
+}
+
+.factor-more {
+  margin-top: 14px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #4f46e5;
+  cursor: pointer;
+}
+
+.coach-entry {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding: 14px 16px;
+  margin-top: 18px;
+  color: #4f46e5;
+  cursor: pointer;
+  background: linear-gradient(120deg, #eef2ff, #f5f3ff);
+  border-radius: 12px;
+  transition: transform 0.18s ease;
+
+  &:hover {
+    transform: translateY(-2px);
+  }
+}
+
+.coach-title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.coach-desc {
+  margin: 2px 0 0;
+  font-size: 12px;
+  color: #6366f1;
 }
 
 /* 快捷入口四宫格 */

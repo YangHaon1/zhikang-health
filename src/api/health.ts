@@ -441,3 +441,199 @@ export const generateDailySummary = () => {
 export const getGoalProgress = () => {
   return http.request<Result<GoalProgressView[]>>("get", "/api/ai/goals");
 };
+
+// ---------- V2.0 P0-1：学生健康画像 ----------
+
+/** 学生健康画像（大学生亚健康建模输入） */
+export type StudentProfile = {
+  grade: string;
+  major: string;
+  isOffCampus: number;
+  bedtime: string;
+  wakeTime: string;
+  sedentaryHours: number;
+  studyHours: number;
+};
+
+/** 读取学生画像（无记录返回 null） */
+export const getStudentProfile = () => {
+  return http.request<Result<StudentProfile | null>>(
+    "get",
+    "/api/health/student-profile"
+  );
+};
+
+/** 保存学生画像（UPSERT） */
+export const updateStudentProfile = (data: Partial<StudentProfile>) => {
+  return http.request<Result<StudentProfile>>(
+    "put",
+    "/api/health/student-profile",
+    { data }
+  );
+};
+
+// ---------- V2.0 P1-1B：ML 亚健康风险预测 ----------
+
+export interface RiskShapFactor {
+  feature: string;
+  label: string;
+  contribution: number;
+  direction: string;
+}
+
+export interface RiskPredictView {
+  source: "ml" | "rule";
+  riskLevel: "low" | "medium" | "high";
+  riskProbability: number;
+  dataQuality: { level: string; filledRatio: number };
+  shapFactors: RiskShapFactor[];
+  modelVersion: string;
+  healthType?: {
+    type: string;
+    name: string;
+    description: string;
+    confidence: number;
+    factors: string[];
+    suggestions: string[];
+    source?: "cluster" | "rule";
+    scores: { sleep: number; stress: number; exercise: number; diet: number };
+  } | null;
+  modelExplain?: {
+    featureImportance: Array<{
+      feature: string;
+      label: string;
+      value: number;
+      direction: "risk_up" | "risk_down";
+    }>;
+  };
+  features: Record<string, number>;
+}
+
+/** AI 亚健康风险预测（ML 优先，自动降级规则） */
+export const getHealthRisk = () => {
+  return http.request<Result<RiskPredictView>>("get", "/api/health/risk");
+};
+
+// ---------- V2.0 P2-1：AI 教练改善方案 ----------
+
+export interface CoachGoal {
+  name: string;
+  reason?: string;
+  action: string;
+  duration?: string;
+}
+
+export interface CoachPlanView {
+  source: "llm" | "template";
+  title: string;
+  summary: string;
+  goals: CoachGoal[];
+}
+
+/** 一键生成个性化健康改善方案 */
+export const getCoachPlan = () => {
+  return http.request<Result<CoachPlanView>>("post", "/api/health/coach-plan");
+};
+
+/** 采纳 AI 方案 → 写入健康计划 */
+export const confirmCoachPlan = (data: {
+  title: string;
+  summary: string;
+  goals: CoachGoal[];
+}) => {
+  return http.request<Result<{ planId: number }>>(
+    "post",
+    "/api/health/coach-plan/confirm",
+    { data }
+  );
+};
+
+// ---------- V2.1 P1-1a/b：大学生健康调研 ----------
+
+export interface HealthSurvey {
+  id: number;
+  surveyVersion: string;
+  sleepHoursAvg: number | null;
+  sleepQuality: number | null;
+  stayUpFreq: number | null;
+  studyPressure: number | null;
+  examPressure: number | null;
+  moodState: number | null;
+  exerciseTimes: number | null;
+  exerciseMin: number | null;
+  breakfast: number | null;
+  dietRegular: number | null;
+  sedentaryHours: number | null;
+  phoneHours: number | null;
+  riskScore: number;
+  lifestyleRiskLabel: "low" | "medium" | "high";
+}
+
+/** 最近一次调研 */
+export const getLatestSurvey = () => {
+  return http.request<
+    Result<{ completed: boolean; data: HealthSurvey | null }>
+  >("get", "/api/health/survey/latest");
+};
+
+/** 提交调研 */
+export const submitSurvey = (data: Record<string, number>) => {
+  return http.request<
+    Result<{ score: number; label: "low" | "medium" | "high" }>
+  >("post", "/api/health/survey", { data });
+};
+
+export interface HealthAgentAnalysis {
+  summary: string;
+  currentStatus: { riskLevel: string; healthType: string; description: string };
+  keyProblems: Array<{ factor: string; reason: string; impact: string }>;
+  suggestions: string[];
+  source: "ai" | "rule";
+}
+export const getHealthAgentAnalysis = () => {
+  return http.request<Result<HealthAgentAnalysis>>(
+    "post",
+    "/api/health/agent/analyze"
+  );
+};
+
+export interface HealthAgentPlan {
+  title: string;
+  goals: Array<{ name: string; reason: string; target: string }>;
+  tasks: Array<{
+    day: number;
+    title: string;
+    category: string;
+    action: string;
+    duration: string;
+  }>;
+  source: "ai" | "rule";
+}
+export const getHealthAgentPlan = () => {
+  return http.request<Result<HealthAgentPlan>>(
+    "post",
+    "/api/health/agent/plan"
+  );
+};
+
+export interface HealthAgentReview {
+  summary: string;
+  completionRate: number;
+  changes: Array<{
+    metric: string;
+    before: string;
+    after: string;
+    trend: "improve" | "stable" | "decline";
+  }>;
+  evaluation: string;
+  nextSuggestions: string[];
+  confidence: "high" | "low";
+  source: "ai" | "rule";
+}
+export const getHealthAgentReview = (planId: number) => {
+  return http.request<Result<HealthAgentReview>>(
+    "post",
+    "/api/health/agent/review",
+    { data: { planId } }
+  );
+};

@@ -23,7 +23,11 @@ const form = reactive({
   sleepHours: null as number | null,
   exerciseMinutes: null as number | null,
   moodScore: null as number | null,
-  dietStatus: "" as DietStatus | ""
+  dietStatus: "" as DietStatus | "",
+  // V2.0 亚健康核心字段
+  sleepQuality: 0 as number,
+  stressLevel: 0 as number,
+  dietRegularity: "" as string
 });
 
 // 打开时把已有今日数据回填，方便用户改一项重交
@@ -35,6 +39,9 @@ watch(
     form.exerciseMinutes = props.today.exerciseMinutes;
     form.moodScore = props.today.moodScore;
     form.dietStatus = props.today.dietStatus;
+    form.sleepQuality = (props.today as any).sleepQuality ?? 0;
+    form.stressLevel = (props.today as any).stressLevel ?? 0;
+    form.dietRegularity = (props.today as any).dietRegularity ?? "";
   }
 );
 
@@ -48,6 +55,24 @@ const dietOptions: Array<{ value: DietStatus; label: string }> = [
   { value: "good", label: "规律" },
   { value: "normal", label: "一般" },
   { value: "poor", label: "不佳" }
+];
+
+const sleepQualityOptions = [
+  { value: 1, label: "差" },
+  { value: 2, label: "一般" },
+  { value: 3, label: "好" }
+];
+
+const stressOptions = [
+  { value: 1, label: "小" },
+  { value: 2, label: "中" },
+  { value: 3, label: "大" }
+];
+
+const regularityOptions = [
+  { value: "good", label: "规律" },
+  { value: "normal", label: "一般" },
+  { value: "poor", label: "不规律" }
 ];
 
 const submitting = ref(false);
@@ -114,6 +139,42 @@ async function submit() {
             :value="d.value"
           >
             {{ d.label }}
+          </el-radio-button>
+        </el-radio-group>
+      </el-form-item>
+
+      <el-form-item label="睡眠质量">
+        <el-radio-group v-model="form.sleepQuality">
+          <el-radio-button
+            v-for="s in sleepQualityOptions"
+            :key="s.value"
+            :value="s.value"
+          >
+            {{ s.label }}
+          </el-radio-button>
+        </el-radio-group>
+      </el-form-item>
+
+      <el-form-item label="压力水平">
+        <el-radio-group v-model="form.stressLevel">
+          <el-radio-button
+            v-for="s in stressOptions"
+            :key="s.value"
+            :value="s.value"
+          >
+            {{ s.label }}
+          </el-radio-button>
+        </el-radio-group>
+      </el-form-item>
+
+      <el-form-item label="饮食规律">
+        <el-radio-group v-model="form.dietRegularity">
+          <el-radio-button
+            v-for="r in regularityOptions"
+            :key="r.value"
+            :value="r.value"
+          >
+            {{ r.label }}
           </el-radio-button>
         </el-radio-group>
       </el-form-item>

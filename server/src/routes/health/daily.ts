@@ -1,4 +1,4 @@
-/**
+﻿/**
  * M1 每日健康记录：`POST /api/health/daily`、`GET /api/health/daily/today`、
  * `GET /api/health/daily?days=N`。
  *
@@ -9,6 +9,9 @@
  *
  * 校验、文案映射、指数与建议口径全部来自共享层 `@shared/daily-health`，
  * 本文件只负责读写库与拼响应。
+ *
+ * V2.0 P0-1：新增 sleep_quality / stress_level / diet_regularity 三个亚健康核心字段，
+ * 路由层直接接收并落库，不改共享层校验口径。
  */
 import { Router } from "express";
 import db, { ensureDailyHealth } from "../../db.js";
@@ -36,14 +39,13 @@ interface DailyRow {
   diet_status: string;
   note: string;
   ai_summary: string;
+  sleep_quality: number | null;
+  stress_level: number | null;
+  diet_regularity: string;
   update_time: string;
 }
 
-interface TodayView extends NormalizedDaily {
-  date: string;
-}
-
-function rowToView(row: DailyRow | undefined): TodayView | null {
+function rowToView(row: DailyRow | undefined) {
   if (!row) return null;
   return {
     date: row.date,
@@ -51,6 +53,9 @@ function rowToView(row: DailyRow | undefined): TodayView | null {
     exerciseMinutes: row.exercise_minutes,
     moodScore: row.mood_score,
     dietStatus: (row.diet_status || "") as NormalizedDaily["dietStatus"],
+    sleepQuality: row.sleep_quality ?? 0,
+    stressLevel: row.stress_level ?? 0,
+    dietRegularity: row.diet_regularity || "",
     note: row.note
   };
 }
@@ -90,16 +95,35 @@ router.post("/health/daily", (req, res) => {
     return;
   }
   ensureDailyHealth();
+
+  // V2.0 亚健康新字段：路由层直接接收，带安全默认值与白名单
+  const num = (v: unknown) => {
+    const n = Number(v);
+    return Number.isFinite(n) ? n : 0;
+  };
+  const sleepQuality = num(body.sleepQuality);
+  const stressLevel = num(body.stressLevel);
+  const dietRegularity =
+    typeof body.dietRegularity === "string" &&
+    ["good", "normal", "poor"].includes(body.dietRegularity)
+      ? body.dietRegularity
+      : "";
+
   db.prepare(
     `INSERT INTO daily_health_records
-       (user_id, date, sleep_hours, exercise_minutes, mood_score, diet_status, note, update_time)
-     VALUES (@user_id, @date, @sleep_hours, @exercise_minutes, @mood_score, @diet_status, @note, datetime('now','localtime'))
+       (user_id, date, sleep_hours, exercise_minutes, mood_score, diet_status, note,
+        sleep_quality, stress_level, diet_regularity, update_time)
+     VALUES (@user_id, @date, @sleep_hours, @exercise_minutes, @mood_score, @diet_status, @note,
+        @sleep_quality, @stress_level, @diet_regularity, datetime('now','localtime'))
      ON CONFLICT(user_id, date) DO UPDATE SET
        sleep_hours = excluded.sleep_hours,
        exercise_minutes = excluded.exercise_minutes,
        mood_score = excluded.mood_score,
        diet_status = excluded.diet_status,
        note = excluded.note,
+       sleep_quality = excluded.sleep_quality,
+       stress_level = excluded.stress_level,
+       diet_regularity = excluded.diet_regularity,
        update_time = datetime('now','localtime')`
   ).run({
     user_id: userId,
@@ -108,7 +132,10 @@ router.post("/health/daily", (req, res) => {
     exercise_minutes: value.exerciseMinutes,
     mood_score: value.moodScore,
     diet_status: value.dietStatus,
-    note: value.note
+    note: value.note,
+    sleep_quality: sleepQuality,
+    stress_level: stressLevel,
+    diet_regularity: dietRegularity
   });
   res.json({
     code: 0,
@@ -126,6 +153,9 @@ router.get("/health/daily/today", (req, res) => {
     exerciseMinutes: null,
     moodScore: null,
     dietStatus: "",
+    sleepQuality: 0,
+    stressLevel: 0,
+    dietRegularity: "",
     note: ""
   };
   // 基础风险分：与报告/分析同一口径（recordsForEngine 已过滤 invalid）
