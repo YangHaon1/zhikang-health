@@ -11,6 +11,7 @@ import { profileForEngine, recordsForEngine } from "./common.js";
 import { predictRisk, predictCluster } from "../../services/ml-client.js";
 import { analyzeHealthType } from "../../services/health-type.js";
 import { calculateBMI } from "../../../shared/health-score.js";
+import { toModelFeatures } from "../../services/featureSource.js";
 
 const router = Router();
 
@@ -89,7 +90,10 @@ function buildFeatures(userId: number): {
   }
 
   return {
-    features: {
+    // toModelFeatures 会拿 feature-spec.json 校验字段名齐全，缺一个就抛错。
+    // 这一步是 P1-1 的落点：Node 侧与 Python 侧共用同一份特征清单，
+    // 谁改了字段没同步，接口立刻暴露，而不是把 undefined 悄悄喂给模型。
+    features: toModelFeatures({
       sleep_hours_mean: Number(avg(days.map(d => d.sleep_hours)).toFixed(2)),
       sleep_below7_days: days.filter(d => (d.sleep_hours ?? 9) < 7).length,
       sleep_quality_avg: Number(avg(days.map(d => d.sleep_quality)).toFixed(2)),
@@ -110,10 +114,17 @@ function buildFeatures(userId: number): {
       is_off_campus: sp?.is_off_campus ?? null,
       grade_code: gradeCodeOf(sp?.grade),
       bmi: bmi
-    },
+    }),
     days: days.length
   };
 }
+
+/**
+ * 导出给漂移监控复用（`routes/health/mlDrift.ts`）。
+ * 现场特征只能有一处构造逻辑：如果漂移监控自己再算一遍，
+ * 监控的分布与模型吃到的分布就不是同一批数据，监控本身失去意义。
+ */
+export { buildFeatures as buildMlFeatures };
 
 function saveSnapshot(
   userId: number,
