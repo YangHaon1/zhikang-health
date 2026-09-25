@@ -158,6 +158,65 @@
           <code>GET /api/health/survey/dataset-status</code> 可复核。
         </p>
       </div>
+
+      <!--
+        P1-1 线上特征分布漂移（PSI）：回答「线上线下特征一致性怎么保证」。
+        数值全部来自 /api/health/ml-drift，前端不做任何美化；
+        基线缺失 / 样本不足时显示「不可用」「仅供参考」，绝不兜底成 0。
+      -->
+    </el-card>
+    <el-card v-if="drift" shadow="never" class="mb-4">
+      <div class="drift-block">
+        <div class="drift-head">
+          <span class="drift-title">线上特征分布漂移（PSI vs 训练分布）</span>
+          <el-tag :type="driftTagType" size="small" effect="dark">
+            {{ driftLevelText }}
+          </el-tag>
+          <el-tooltip
+            content="PSI < 0.10 稳定；0.10~0.25 轻微漂移；≥0.25 显著漂移。分箱边界与判定阈值由 server-ml/model/feature-baseline.json 提供，Python 与 TypeScript 两侧使用同一套规则。"
+            placement="top"
+          >
+            <el-icon class="drift-help"><QuestionFilled /></el-icon>
+          </el-tooltip>
+        </div>
+
+        <template v-if="drift.available">
+          <p class="drift-line">
+            参与统计 <b>{{ drift.usersWithData }}</b> 个账号 /
+            <b>{{ drift.samples }}</b> 个样本 · 基线
+            <code>{{ drift.baselineVersion }}</code>
+            · 最大偏离
+            <b>{{ driftMaxPsiText }}</b>
+            <template v-if="drift.maxPsiFeature">
+              （{{ driftLabel(drift.maxPsiFeature) }}）
+            </template>
+          </p>
+          <p v-if="!drift.sufficient" class="drift-warn">
+            样本量不足，PSI 抖动较大，本结果仅供参考
+          </p>
+          <div v-for="f in driftTop" :key="f.feature" class="drift-row">
+            <span class="drift-key">{{ f.label }}</span>
+            <div class="drift-track">
+              <div
+                class="drift-bar"
+                :class="`drift-bar-${f.level}`"
+                :style="{ width: driftBarWidth(f.psi) }"
+              />
+            </div>
+            <span class="drift-val">
+              {{ f.psi === null ? "无数据" : f.psi.toFixed(4) }}
+            </span>
+          </div>
+          <p class="drift-foot">
+            {{ drift.disclaimer }} 基线来源：{{ drift.trainedWith }}
+          </p>
+        </template>
+        <p v-else class="drift-warn">
+          基线产物不可用（server-ml/model/feature-baseline.json 缺失或损坏）：
+          无法判断漂移，而不是「没有漂移」。可执行
+          <code>python server-ml/feature_baseline.py</code> 重新生成。
+        </p>
+      </div>
     </el-card>
     <!-- 加载 / 空态 -->
     <el-card v-if="loading && !data" shadow="never">
@@ -286,9 +345,11 @@ import { useDark } from "@pureadmin/utils";
 import {
   exportHealthAnalytics,
   getHealthAnalytics,
+  getMlDrift,
   getSurveyDatasetStatus
 } from "@/api/health";
 import type { AnalyticsOverview } from "@/types/health";
+import type { MlDriftFeature, MlDriftReport } from "@/api/health";
 import { ANALYTICS_MIN_SAMPLE, MASKED_TEXT } from "@/types/health";
 import echarts from "@/plugins/echarts";
 import { QuestionFilled } from "@element-plus/icons-vue";
@@ -353,6 +414,64 @@ async function loadCredibility() {
     // 拿不到就整块不展示，不用刻意拦在流程前面
     modelCredibility.value = null;
   }
+}
+
+/**
+ * P1-1 线上特征分布漂移（PSI）。
+ * 单独请求：漂移监控挂了不应该让整个看板打不开（它是观测能力，不是主业务）。
+ * 拿不到就整块不渲染，不做任何兜底数字。
+ */
+const drift = ref<MlDriftReport | null>(null);
+
+async function loadDrift() {
+  try {
+    const r = await getMlDrift();
+    drift.value = r.code === 0 && r.data ? r.data : null;
+  } catch {
+    drift.value = null;
+  }
+}
+
+/** 只展示偏离最大的 6 个特征，其余按行排列会淹没重点 */
+const driftTop = computed<MlDriftFeature[]>(() => {
+  const list = drift.value?.features ?? [];
+  return [...list]
+    .filter(f => f.psi !== null)
+    .sort((a, b) => (b.psi ?? 0) - (a.psi ?? 0))
+    .slice(0, 6);
+});
+
+const driftLevelText = computed(() => {
+  const l = drift.value?.level;
+  if (!drift.value?.available) return "基线不可用";
+  if (l === "significant") return "显著漂移";
+  if (l === "watch") return "轻微漂移";
+  if (l === "stable") return "稳定";
+  return "无数据";
+});
+
+const driftTagType = computed(() => {
+  const l = drift.value?.level;
+  if (!drift.value?.available) return "info";
+  if (l === "significant") return "danger";
+  if (l === "watch") return "warning";
+  if (l === "stable") return "success";
+  return "info";
+});
+
+const driftLabel = (feature: string) =>
+  drift.value?.features.find(f => f.feature === feature)?.label ?? feature;
+
+const driftMaxPsiText = computed(() => {
+  const v = drift.value?.maxPsi;
+  return typeof v === "number" ? v.toFixed(4) : "无数据";
+});
+
+/** 条形长度：以「显著漂移阈值 ×2」为满格，方便一眼看出离红线多远 */
+function driftBarWidth(psi: number | null): string {
+  if (psi === null) return "1.5%";
+  const full = (drift.value?.thresholds.watch ?? 0.25) * 2;
+  return `${Math.max(1.5, Math.min(100, (psi / full) * 100))}%`;
 }
 
 /**
@@ -580,6 +699,7 @@ async function load() {
   try {
     const { code, data: overview } = await getHealthAnalytics();
     await loadCredibility();
+    await loadDrift();
     if (code === 0 && overview) {
       data.value = overview;
       await nextTick();
@@ -814,6 +934,116 @@ onBeforeUnmount(() => {
   b {
     color: #0f766e;
   }
+}
+
+/* P1-1 特征漂移（PSI）：同样是纯 CSS 条，理由与聚类质量一致 */
+.drift-block {
+  padding: 8px 10px;
+  margin-top: 8px;
+  background: #f8fafc;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+}
+
+.drift-head {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  font-weight: 600;
+  color: #374151;
+}
+
+.drift-title {
+  flex: 1;
+}
+
+.drift-help {
+  font-size: 13px;
+  color: #9ca3af;
+  cursor: help;
+}
+
+.drift-line {
+  margin: 6px 0 0;
+  font-size: 11px;
+  line-height: 1.6;
+  color: #4b5563;
+
+  b {
+    color: #0f766e;
+  }
+
+  code {
+    padding: 1px 4px;
+    font-size: 11px;
+    background: #eef2f6;
+    border-radius: 3px;
+  }
+}
+
+.drift-warn {
+  margin: 6px 0 0;
+  font-size: 11px;
+  line-height: 1.6;
+  color: #b45309;
+
+  code {
+    padding: 1px 4px;
+    font-size: 11px;
+    background: #fef3c7;
+    border-radius: 3px;
+  }
+}
+
+.drift-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-top: 6px;
+  font-size: 11px;
+  color: #6b7280;
+}
+
+.drift-key {
+  flex: 0 0 72px;
+}
+
+.drift-track {
+  flex: 1;
+  height: 8px;
+  overflow: hidden;
+  background: #e5e7eb;
+  border-radius: 4px;
+}
+
+.drift-bar {
+  height: 100%;
+  border-radius: 4px;
+}
+
+.drift-bar-stable {
+  background: #16a34a;
+}
+
+.drift-bar-watch {
+  background: #f59e0b;
+}
+
+.drift-bar-significant {
+  background: #dc2626;
+}
+
+.drift-val {
+  flex: 0 0 56px;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.drift-foot {
+  margin: 8px 0 0;
+  font-size: 11px;
+  line-height: 1.6;
+  color: #9ca3af;
 }
 
 @media (width <= 640px) {

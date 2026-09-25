@@ -727,3 +727,49 @@ export const getHealthAgentReview = (planId: number) => {
     { timeout: LLM_TIMEOUT }
   );
 };
+
+// ---------- P1-1：线上特征分布漂移（PSI，admin 专属） ----------
+
+/**
+ * 特征漂移监控结果，字段与 server/src/services/featureDrift.ts 一致。
+ *
+ * ⚠️ PSI 是「输入分布」指标，不是准确率。展示时必须带上 disclaimer，
+ *    不能把 maxPsi 低说成「模型准」。
+ */
+export interface MlDriftFeature {
+  feature: string;
+  label: string;
+  unit: string;
+  /** 无线上数据时为 null（不是 0 —— 0 会被误读成"完全稳定"） */
+  psi: number | null;
+  level: "stable" | "watch" | "significant" | "no_data";
+  samples: number;
+  actualMedian: number | null;
+  referenceMedian: number | null;
+}
+
+export interface MlDriftReport {
+  /** 基线产物是否存在；false 时其余字段无意义，前端必须显示"基线不可用" */
+  available: boolean;
+  baselineVersion: string;
+  trainedWith: string;
+  /** 最差特征的漂移等级 */
+  level: "stable" | "watch" | "significant" | "no_data";
+  maxPsi: number | null;
+  maxPsiFeature: string | null;
+  samples: number;
+  /** 样本量是否够（不足时 PSI 抖动大，必须标注"仅供参考"） */
+  sufficient: boolean;
+  thresholds: { stable: number; watch: number };
+  baselineFile: string;
+  specFile: string;
+  features: MlDriftFeature[];
+  disclaimer: string;
+  /** 参与统计的账号数（近 7 天有记录的） */
+  usersWithData: number;
+}
+
+/** 特征漂移监控（admin 专属；普通用户 403） */
+export const getMlDrift = () => {
+  return http.request<Result<MlDriftReport>>("get", "/api/health/ml-drift");
+};

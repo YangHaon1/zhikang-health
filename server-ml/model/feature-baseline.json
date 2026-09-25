@@ -1,0 +1,219 @@
+{
+  "baseline_version": "feature-baseline-v1",
+  "spec_path": "server-ml\\feature-spec.json",
+  "feature_spec_version": "feature-spec-v1",
+  "provenance": {
+    "source": "train.make_synth()，与 model/lgbm.txt 的训练数据同一生成器",
+    "seed": 42,
+    "samples": 4000,
+    "bins": 10,
+    "discrete_max_distinct": 8,
+    "caveat": "当前模型为 synthetic_only 冷启动：基线描述的是合成训练数据。改用真实问卷重训后，train.py 会用真实特征重算并覆盖本文件，届时基线才代表真实人群分布。"
+  },
+  "label_distribution": {
+    "0": 220,
+    "1": 2385,
+    "2": 1395
+  },
+  "features": [
+    {
+      "feature": "sleep_hours_mean",
+      "label": "睡眠时长",
+      "unit": "h",
+      "bin_edges": [
+        3.291159, 5.685464, 6.20542, 6.570847, 6.910527, 7.196527, 7.496744,
+        7.801112, 8.215389, 8.735912, 11.0
+      ],
+      "proportions": [0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1],
+      "reference_median": 7.1965,
+      "reference_mean": 7.2051,
+      "reference_min": 3.2912,
+      "reference_max": 11.0
+    },
+    {
+      "feature": "sleep_below7_days",
+      "label": "睡眠不足天数",
+      "unit": "天",
+      "bin_edges": [0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0],
+      "proportions": [0.16375, 0.14225, 0.198, 0.19025, 0.1455, 0.089, 0.07125],
+      "reference_median": 2.0,
+      "reference_mean": 2.591,
+      "reference_min": 0.0,
+      "reference_max": 7.0
+    },
+    {
+      "feature": "sleep_quality_avg",
+      "label": "睡眠质量",
+      "unit": "1~3",
+      "bin_edges": [
+        1.0, 1.432549, 1.688736, 1.883909, 2.05407, 2.205446, 2.352971,
+        2.515167, 2.70876, 2.983182, 3.0
+      ],
+      "proportions": [0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1],
+      "reference_median": 2.2054,
+      "reference_mean": 2.1823,
+      "reference_min": 1.0,
+      "reference_max": 3.0
+    },
+    {
+      "feature": "exercise_min_sum",
+      "label": "运动时长",
+      "unit": "min",
+      "bin_edges": [
+        0.0, 3.339415, 46.012385, 73.86642, 98.322451, 120.876629, 143.905494,
+        167.994157, 197.433784, 236.752046, 496.685314
+      ],
+      "proportions": [0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1],
+      "reference_median": 120.8766,
+      "reference_mean": 124.8202,
+      "reference_min": 0.0,
+      "reference_max": 496.6853
+    },
+    {
+      "feature": "exercise_days",
+      "label": "运动频率",
+      "unit": "天",
+      "bin_edges": [0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0],
+      "proportions": [
+        0.13725, 0.1545, 0.21975, 0.2165, 0.1395, 0.08175, 0.05075
+      ],
+      "reference_median": 2.0,
+      "reference_mean": 2.5255,
+      "reference_min": 0.0,
+      "reference_max": 7.0
+    },
+    {
+      "feature": "stress_avg",
+      "label": "平均压力",
+      "unit": "1~3",
+      "bin_edges": [
+        1.0, 1.144439, 1.414731, 1.591051, 1.741975, 1.87741, 2.034525,
+        2.193173, 2.391463, 2.650395, 3.0
+      ],
+      "proportions": [0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1],
+      "reference_median": 1.8774,
+      "reference_mean": 1.9023,
+      "reference_min": 1.0,
+      "reference_max": 3.0
+    },
+    {
+      "feature": "stress_high_days",
+      "label": "高压天数",
+      "unit": "天",
+      "bin_edges": [0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0],
+      "proportions": [
+        0.36975, 0.26075, 0.2185, 0.10275, 0.03525, 0.01125, 0.00175
+      ],
+      "reference_median": 1.0,
+      "reference_mean": 1.2145,
+      "reference_min": 0.0,
+      "reference_max": 7.0
+    },
+    {
+      "feature": "diet_reg_ratio",
+      "label": "饮食规律",
+      "unit": "0~1",
+      "bin_edges": [
+        0.0, 0.346709, 0.433507, 0.494774, 0.546228, 0.597768, 0.650813,
+        0.705763, 0.769694, 0.852543, 1.0
+      ],
+      "proportions": [0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1],
+      "reference_median": 0.5978,
+      "reference_mean": 0.598,
+      "reference_min": 0.0,
+      "reference_max": 1.0
+    },
+    {
+      "feature": "mood_avg",
+      "label": "情绪状态",
+      "unit": "1~3",
+      "bin_edges": [
+        1.0, 1.456796, 1.691668, 1.841837, 1.986098, 2.104786, 2.238252,
+        2.368498, 2.527575, 2.739512, 3.0
+      ],
+      "proportions": [0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1],
+      "reference_median": 2.1048,
+      "reference_mean": 2.1012,
+      "reference_min": 1.0,
+      "reference_max": 3.0
+    },
+    {
+      "feature": "study_hours",
+      "label": "学习时长",
+      "unit": "h",
+      "bin_edges": [
+        0.0, 3.719517, 4.918476, 5.725558, 6.373367, 7.021467, 7.636266,
+        8.280366, 9.135601, 10.276248, 15.739114
+      ],
+      "proportions": [0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1],
+      "reference_median": 7.0215,
+      "reference_mean": 7.0148,
+      "reference_min": 0.0,
+      "reference_max": 15.7391
+    },
+    {
+      "feature": "sedentary_hours",
+      "label": "久坐时长",
+      "unit": "h",
+      "bin_edges": [
+        0.0, 4.683834, 5.831754, 6.595091, 7.277611, 7.921137, 8.549483,
+        9.290468, 10.077995, 11.18665, 16.0
+      ],
+      "proportions": [0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1],
+      "reference_median": 7.9211,
+      "reference_mean": 7.9412,
+      "reference_min": 0.0,
+      "reference_max": 16.0
+    },
+    {
+      "feature": "bedtime_hour",
+      "label": "就寝时间",
+      "unit": "时",
+      "bin_edges": [
+        0.000917, 0.5539, 2.936971, 21.42925, 22.001782, 22.358567, 22.693998,
+        22.98633, 23.301734, 23.623493, 23.998622
+      ],
+      "proportions": [0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1],
+      "reference_median": 22.3586,
+      "reference_mean": 18.1841,
+      "reference_min": 0.0009,
+      "reference_max": 23.9986
+    },
+    {
+      "feature": "is_off_campus",
+      "label": "校外住宿",
+      "unit": "0/1",
+      "bin_edges": [0.0, 1.0],
+      "proportions": [1.0],
+      "reference_median": 0.0,
+      "reference_mean": 0.3018,
+      "reference_min": 0.0,
+      "reference_max": 1.0
+    },
+    {
+      "feature": "grade_code",
+      "label": "年级",
+      "unit": "1~6",
+      "bin_edges": [1.0, 2.0, 3.0, 4.0, 5.0, 6.0],
+      "proportions": [0.16575, 0.16675, 0.17375, 0.16575, 0.328],
+      "reference_median": 3.0,
+      "reference_mean": 3.4983,
+      "reference_min": 1.0,
+      "reference_max": 6.0
+    },
+    {
+      "feature": "bmi",
+      "label": "BMI",
+      "unit": "kg/m²",
+      "bin_edges": [
+        15.0, 17.35489, 18.425276, 19.19725, 19.882756, 20.517458, 21.154971,
+        21.802066, 22.608423, 23.694275, 29.191418
+      ],
+      "proportions": [0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1],
+      "reference_median": 20.5175,
+      "reference_mean": 20.5218,
+      "reference_min": 15.0,
+      "reference_max": 29.1914
+    }
+  ]
+}

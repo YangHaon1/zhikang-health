@@ -164,6 +164,16 @@ def train(real_db: str | None = None):
     with open(META_PATH, "w", encoding="utf-8") as f:
         json.dump(meta, f, ensure_ascii=False, indent=2)
 
+    # P1-1：训练数据一旦变化，漂移基线必须跟着变。
+    # 放在训练里自动刷新，避免出现「模型换了、基线还是老的」这种监控失明。
+    try:
+        from feature_baseline import write_baseline
+        baseline_path = write_baseline()
+        print(f"[train] 漂移基线已刷新: {baseline_path}")
+    except Exception as exc:  # noqa: BLE001
+        # 基线失败不影响模型产出，但必须留痕（静默 = 监控长期失明却无人知晓）
+        print(f"[train] ⚠️ 漂移基线生成失败（不影响模型）: {exc!r}")
+
     names = ["low", "medium", "high"]
     print(f"[train] 模型已保存: {MODEL_PATH}  ({MODEL_VERSION}) mode={mode} real={real_n} synth={synth_n}")
     print(f"[train] test 集规模: {len(y_te)}  | Accuracy: {acc:.3f}  | Macro-F1: {f1.mean():.3f}  | AUC-OVR: {auc:.3f}")
