@@ -29,6 +29,7 @@ import echarts from "@/plugins/echarts";
 import { RadarChart } from "echarts/charts";
 import { RadarComponent } from "echarts/components";
 import { utils, writeFile } from "xlsx";
+import { fmtDate, lastNDays } from "@/utils/date";
 
 // 雷达图按需注册（全局插件已注册 Pie/Bar/Line，这里补 Radar）
 echarts.use([RadarChart, RadarComponent]);
@@ -53,20 +54,6 @@ let timelineChart: ReturnType<typeof echarts.init> | null = null;
 
 const { isDark } = useDark();
 const theme = computed(() => (isDark.value ? "dark" : undefined));
-
-/** 本地日期 yyyy-MM-dd */
-function fmtDate(d: Date): string {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(
-    d.getDate()
-  ).padStart(2, "0")}`;
-}
-
-/** 最近 n 天日期区间 */
-function lastNDays(n: number): [string, string] {
-  const end = new Date();
-  const start = new Date(Date.now() - (n - 1) * 86400000);
-  return [fmtDate(start), fmtDate(end)];
-}
 
 const dateRange = ref<[string, string] | null>(lastNDays(30));
 
@@ -447,36 +434,27 @@ onBeforeUnmount(() => {
               </div>
             </div>
 
-            <!-- AI 生成过程状态（基于报告真实字段，纯展示） -->
+            <!--
+              报告内容清单：报告由后端一次性同步计算产出（规则引擎，非分步 AI 生成），
+              因此这里只如实列出报告包含的内容模块，不模拟任何"生成进度/百分比"。
+            -->
             <div class="ai-progress">
-              <div
-                class="ai-progress-item"
-                :class="{ done: report.trend.length > 0 }"
-              >
-                <span class="ai-check">{{
-                  report.trend.length > 0 ? "✓" : "…"
-                }}</span>
-                数据采集完成
+              <div class="ai-progress-item done">
+                <span class="ai-check">✓</span>
+                数据分析完成
               </div>
-              <div
-                class="ai-progress-item"
-                :class="{ done: report.radar.length >= 3 }"
-              >
-                <span class="ai-check">{{
-                  report.radar.length >= 3 ? "✓" : "…"
-                }}</span>
-                健康分析完成
+              <div class="ai-progress-item done">
+                <span class="ai-check">✓</span>
+                风险计算完成
               </div>
-              <div
-                class="ai-progress-item"
-                :class="{ done: report.suggestions.length > 0 }"
-              >
-                <span class="ai-check">{{
-                  report.suggestions.length > 0 ? "✓" : "…"
-                }}</span>
-                AI 建议生成
+              <div class="ai-progress-item done">
+                <span class="ai-check">✓</span>
+                建议生成完成
               </div>
             </div>
+            <p class="report-note">
+              本报告由规则引擎基于你的健康记录实时计算生成，非分步 AI 生成过程。
+            </p>
 
             <!-- 总体评价 -->
             <div class="block-label">总体评价</div>
@@ -974,9 +952,16 @@ onBeforeUnmount(() => {
   flex-wrap: wrap;
   gap: 10px 20px;
   padding: 12px 16px;
-  margin-bottom: 22px;
+  margin-bottom: 8px;
   background: #f5f6ff;
   border-radius: 12px;
+}
+
+.report-note {
+  margin: 0 0 22px;
+  font-size: 12px;
+  line-height: 1.6;
+  color: #9ca3af;
 }
 
 .ai-progress-item {

@@ -4,6 +4,7 @@ import { message } from "@/utils/message";
 import { read, utils, writeFile } from "xlsx";
 import { importHealthRecords, seedHealthRecords } from "@/api/health";
 import type { HealthRecord } from "@/types/health";
+import { fmtDate } from "@/utils/date";
 
 defineOptions({
   name: "HealthImport"
@@ -32,13 +33,6 @@ const COLUMNS: ColDef[] = [
   { key: "weight", label: "体重(kg)", max: 300 },
   { key: "remark", label: "备注" }
 ];
-
-/** 本地日期 yyyy-MM-dd */
-function fmtDate(d: Date): string {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(
-    d.getDate()
-  ).padStart(2, "0")}`;
-}
 
 /** 解析日期单元格：支持 Date 对象、Excel 序列号、yyyy-MM-dd / yyyy/M/d / yyyy.M.d 字符串 */
 function parseDate(v: any): string | null {

@@ -1,21 +1,22 @@
 /** P1-1：聚类模型训练统计（只读）。 */
 import { Router } from "express";
 import fs from "node:fs";
-import path from "node:path";
+import { clusterMetaFile } from "../../paths.js";
+import { authMiddleware } from "../../middleware/auth.js";
 
 const router = Router();
-const META = path.resolve(
-  process.cwd(),
-  "..",
-  "server-ml",
-  "cluster-model",
-  "metadata.json"
-);
 
-router.get("/health/cluster-stats", (_req, res) => {
+/**
+ * 补鉴权：原实现无 authMiddleware，任意匿名请求即可拿到模型训练元信息
+ * （样本构成、轮廓系数、簇心特征）。虽非个人数据，但属于不应公开的内部信息，
+ * 且与同目录 analytics 的 adminOnly 口径不一致。
+ */
+router.get("/health/cluster-stats", authMiddleware, (_req, res) => {
   let meta: Record<string, unknown> = {};
+  const metaFile = clusterMetaFile();
   try {
-    if (fs.existsSync(META)) meta = JSON.parse(fs.readFileSync(META, "utf-8"));
+    if (fs.existsSync(metaFile))
+      meta = JSON.parse(fs.readFileSync(metaFile, "utf-8"));
   } catch {
     /* ignore */
   }
@@ -23,7 +24,8 @@ router.get("/health/cluster-stats", (_req, res) => {
     code: 0,
     message: "操作成功",
     data: {
-      version: meta.model_version ?? "unknown",
+      // 统一键名 model_version（旧文件曾写作 version，保留兼容读取）
+      version: meta.model_version ?? meta.version ?? "unknown",
       trainingMode: meta.training_mode ?? "unknown",
       realSamples: meta.real_samples ?? 0,
       syntheticSamples: meta.synthetic_samples ?? 0,

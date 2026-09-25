@@ -1,2 +1,10 @@
 public/wasm/capture.worker.js linguist-language=Vue
 public/wasm/index.js linguist-language=Vue
+
+# 模型 & 二进制产物：禁止 Git 做 CRLF 换行转换
+# lgbm.txt 是 LightGBM 的文本模型文件，一旦在 checkout 时被转成 CRLF，
+# LightGBM 解析会报 "Model format error, expect a tree here" 导致模型完全无法加载。
+server-ml/model/*.txt -text
+server-ml/model/*.json -text
+server-ml/cluster-model/* -text
+*.pkl binary

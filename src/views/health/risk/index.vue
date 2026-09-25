@@ -43,19 +43,38 @@ onMounted(async () => {
   }
 });
 
+// unknown / insufficient 为后端新增状态（数据不足时不做预测），必须有兜底
 const LEVEL_META: Record<string, { text: string; color: string }> = {
   low: { text: "低风险倾向", color: "#16a34a" },
   medium: { text: "中等风险倾向", color: "#f59e0b" },
-  high: { text: "高风险倾向", color: "#dc2626" }
+  high: { text: "高风险倾向", color: "#dc2626" },
+  unknown: { text: "暂无法评估", color: "#64748b" }
 };
 
-const level = computed(() => LEVEL_META[risk.value?.riskLevel ?? "low"]);
+const level = computed(
+  () => LEVEL_META[risk.value?.riskLevel ?? "unknown"] ?? LEVEL_META.unknown
+);
+/** 数据不足：后端返回 source=insufficient，此时不展示任何风险结论 */
+const insufficient = computed(() => risk.value?.source === "insufficient");
 const probPct = computed(() =>
   risk.value ? Math.round(risk.value.riskProbability * 100) : 0
 );
 const hasDaily = computed(() =>
   risk.value ? risk.value.dataQuality.filledRatio > 0 : false
 );
+
+/**
+ * SHAP 方向与说明一律取自后端 explain.py 的结果，前端不做任何二次计算/推断。
+ * unknown 表示模型解释降级（无方向信息），必须如实展示，不能归到"降低风险"。
+ */
+const dirText = (d: string) =>
+  d === "risk_up"
+    ? "↑ 升高风险"
+    : d === "risk_down"
+      ? "↓ 降低风险"
+      : "· 方向待定";
+const barColor = (d: string) =>
+  d === "risk_up" ? "#f59e0b" : d === "risk_down" ? "#16a34a" : "#94a3b8";
 
 const plan = ref<CoachPlanView | null>(null);
 const planLoading = ref(false);
@@ -193,10 +212,13 @@ async function adopt() {
         </div>
       </div>
 
-      <div v-if="risk.shapFactors?.length" class="factor-card">
+      <div
+        v-if="risk.modelExplain?.featureImportance?.length"
+        class="factor-card"
+      >
         <h3 class="factor-title">为什么判断我有这个风险</h3>
         <div
-          v-for="f in risk.modelExplain?.featureImportance || []"
+          v-for="f in risk.modelExplain.featureImportance"
           :key="f.feature"
           class="bar-row"
         >
@@ -206,14 +228,17 @@ async function adopt() {
               class="bar-fill"
               :style="{
                 width: f.value + '%',
-                background: f.direction === 'risk_up' ? '#f59e0b' : '#16a34a'
+                background: barColor(f.direction)
               }"
             />
           </div>
-          <span class="bar-dir">{{
-            f.direction === "risk_up" ? "↑ 升高风险" : "↓ 降低风险"
-          }}</span>
+          <span class="bar-dir">{{ dirText(f.direction) }}</span>
+          <p v-if="f.description" class="bar-desc">{{ f.description }}</p>
         </div>
+        <p class="factor-note">
+          以上归因来自模型 SHAP
+          单样本解释，仅表示各因素对本次判定的贡献方向与相对大小。
+        </p>
       </div>
 
       <div class="coach-entry" @click="router.push('/health/chat')">
@@ -260,7 +285,11 @@ async function adopt() {
     <el-empty
       v-else
       class="risk-empty"
-      description="完成每日健康记录后，AI 将生成风险预测"
+      :description="
+        insufficient
+          ? '近 7 天暂无每日健康记录，数据不足时不做风险预测'
+          : '完成每日健康记录后，AI 将生成风险预测'
+      "
     >
       <el-button
         type="primary"
@@ -274,7 +303,11 @@ async function adopt() {
     <!-- 原有 AI 画像结果（保留） -->
     <template v-if="profile">
       <RiskScoreCard :profile="profile" />
-      <HealthFactorChart :problems="profile.problems" />
+      <!-- 传入后端真实 SHAP 归因；无归因时组件只罗列规则文案，不编造强度 -->
+      <HealthFactorChart
+        :factors="risk?.modelExplain?.featureImportance ?? []"
+        :problems="profile.problems"
+      />
       <AIAdviceList :advice="profile.suggestions" />
     </template>
   </div>
@@ -399,6 +432,22 @@ async function adopt() {
   font-size: 12px;
   color: #6b7280;
   text-align: right;
+}
+
+/* SHAP 说明：跨满整行，避免破坏 bar-row 的三列栅格 */
+.bar-desc {
+  grid-column: 1 / -1;
+  margin: -2px 0 0;
+  font-size: 12px;
+  line-height: 1.6;
+  color: #6b7280;
+}
+
+.factor-note {
+  margin: 10px 0 0;
+  font-size: 12px;
+  line-height: 1.6;
+  color: #9ca3af;
 }
 
 .coach-entry {

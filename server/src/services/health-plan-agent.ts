@@ -95,16 +95,38 @@ function rulePlan(): PlanResult {
   };
 }
 
-export async function generatePlan(opts: {
+export interface PlanInput {
+  /** Analyze Agent 产出的风险总结（工作流的关键输入，不能为空串） */
   summary: string;
+  /** 行为分型（如「作息紊乱型」） */
   healthType: string;
-}): Promise<PlanResult> {
+  /** 风险等级 low / medium / high */
+  risk?: string;
+  /** 风险成因（Analyze 给出的关键问题说明） */
+  reason?: string;
+}
+
+export async function generatePlan(opts: PlanInput): Promise<PlanResult> {
   if (!llmAvailable()) return rulePlan();
+
+  // 把 Analyze 的结论真正带进 prompt，否则 Plan 只能凭健康分型"盲写"
+  const contextLines = [
+    `学生状态：${opts.summary || "（Analyze 未给出总结）"}`,
+    `行为画像：${opts.healthType || "未识别"}`
+  ];
+  if (opts.risk) contextLines.push(`风险等级：${opts.risk}`);
+  if (opts.reason) contextLines.push(`主要成因：${opts.reason}`);
+
   const prompt = [
     COACH_ROLE_PROMPT,
-    `学生状态：${opts.summary}；行为画像：${opts.healthType || "未识别"}。`,
+    contextLines.join("；"),
+    opts.summary || opts.reason
+      ? "请针对上述具体问题制定计划，任务要与成因一一对应，不要给通用建议。"
+      : "",
     '请输出 JSON：{"title":"","goals":[{"name":"","reason":"","target":""}],"tasks":[{"day":1,"title":"","category":"睡眠|运动|饮食|作息|压力","action":"","duration":""}]}。共 7 天，每天 1-2 个任务，符合大学生场景。只输出 JSON。'
-  ].join("\n");
+  ]
+    .filter(Boolean)
+    .join("\n");
   try {
     const r = await callLlm([{ role: "system", content: prompt }]);
     const m = r.text.match(/\{[\s\S]*\}/);

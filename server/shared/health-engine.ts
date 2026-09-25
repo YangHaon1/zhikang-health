@@ -5,6 +5,7 @@
 //
 // 入参口径：与 API 层一致（camelCase + 中文生活方式枚举 + gender 0 女/1 男），
 // 后端由 routes/health.ts 的映射表把 DB 整数枚举转成这个口径后再喂给引擎。
+import { calculateBMI } from "./health-score.js";
 
 /** 健康档案（与前端 `src/types/health.ts` 的 HealthProfile 同源，前端直接 re-export 本类型） */
 export interface HealthProfile {
@@ -256,7 +257,8 @@ export function gradeBmi(
   weightKg: number
 ): IndicatorGrade | null {
   if (!heightCm || !weightKg) return null;
-  const bmi = Number((weightKg / Math.pow(heightCm / 100, 2)).toFixed(1));
+  // BMI 公式统一走 health-score.calculateBMI（此前本文件内联了一份，是第 3 份实现）
+  const bmi = calculateBMI(heightCm, weightKg)!;
   const base = { key: "bmi", name: "BMI", value: bmi, rule: RULE_META.BMI };
   if (bmi < 18.5)
     return { ...base, level: 1, severity: 1, grade: "偏瘦", desc: "体重过低" };
@@ -479,11 +481,22 @@ export function gradeHdl(v: number, gender: number): IndicatorGrade {
 
 // ---------- 综合评分 / 风险等级 / 建议 ----------
 
+/**
+ * 风险等级阈值。抽成常量是为了让「高危保护」与 riskLevelOf 共用同一套分界，
+ * 避免两处硬编码 30 导致保底值与等级判定漂移。
+ */
+const RISK_LEVEL_THRESHOLD = {
+  low: 0,
+  medium: 30,
+  high: 60,
+  extreme: 80
+} as const;
+
 /** 风险等级映射：<30 低 / 30~59 中 / 60~79 高 / ≥80 极高 */
 export function riskLevelOf(score: number): RiskLevel {
-  if (score < 30) return "低";
-  if (score < 60) return "中";
-  if (score < 80) return "高";
+  if (score < RISK_LEVEL_THRESHOLD.medium) return "低";
+  if (score < RISK_LEVEL_THRESHOLD.high) return "中";
+  if (score < RISK_LEVEL_THRESHOLD.extreme) return "高";
   return "极高";
 }
 
@@ -592,15 +605,27 @@ export function analyzeHealth(
   };
 
   // 加权得分：正常 0、警戒 50%、异常 100%
-  let score = 0;
+  //
+  // 分母只累计【已测量】指标的权重，未测指标既不贡献分子也不进分母。
+  // 若不做归一化，「只测了血压」的用户最多只能拿到 25/100，会被判成低风险 ——
+  // 三级高血压（200/120）因此被标成「低」，属于方向性错误。
+  // 归一化后：测的项目越少，分数只反映已测项的严重程度，不会因为"没测"而显得健康。
+  let weighted = 0;
+  let measured = 0;
   (Object.keys(WEIGHTS) as Array<keyof typeof WEIGHTS>).forEach(key => {
     const l = categories[key];
     if (l === null) return;
-    score += WEIGHTS[key] * (l === 2 ? 1 : l === 1 ? 0.5 : 0);
+    measured += WEIGHTS[key];
+    weighted += WEIGHTS[key] * (l === 2 ? 1 : l === 1 ? 0.5 : 0);
   });
-  score = Math.round(score);
+  let score = measured > 0 ? Math.round((weighted / measured) * 100) : 0;
 
-  // 生活方式修正
+  // 高危保护：任一单项达到「异常」(level 2) 时，总评不得低于「中」的阈值。
+  // 避免单个危急值被其它正常项稀释成「低风险」。
+  const hasSevere = Object.values(categories).some(l => l === 2);
+  if (hasSevere) score = Math.max(score, RISK_LEVEL_THRESHOLD.medium);
+
+  // 生活方式修正（只加分，不参与归一化）
   if (profile) {
     if (profile.smoking === "偶尔" || profile.smoking === "经常")
       score += LIFESTYLE.smoking;
@@ -683,6 +708,70 @@ const EMERGENCY_SYMPTOMS: Array<[string, string]> = [
   ["黑便", "黑便提示消化道出血，需急诊处理"]
 ];
 
+/**
+ * 否定 / 非当前 / 非本人 语境词。
+ *
+ * 「我没有胸痛，就是有点累」「家人有抽搐史，我需要担心吗」这类表述
+ * 描述的并不是「正在发生的急症」。直接命中会同时造成两个危害：
+ *   1. 用户被误导，产生不必要的恐慌；
+ *   2. 真正触发急症卡时，用户已经不再相信这条提示 —— 假阳性比假阴性更危险。
+ *
+ * 因此命中关键词后，还要回看关键词**前面**的一小段窗口是否带这些词。
+ */
+const NEGATION_HINTS = [
+  "没有",
+  "没出现",
+  "没觉得",
+  "不是",
+  "不会",
+  "绝不",
+  "不存在",
+  "未出现",
+  "已缓解",
+  "已经好了",
+  "已好转",
+  "已恢复",
+  "以前",
+  "曾经",
+  "去年",
+  "之前",
+  "小时候",
+  "家人",
+  "朋友",
+  "同学",
+  "同事",
+  "邻居",
+  "担心",
+  "会不会",
+  "预防",
+  "害怕",
+  "科普",
+  "假如",
+  "如果"
+];
+
+/** 关键词前 N 个字符内出现否定/非本人语境 → 判定为非当前急症 */
+const NEGATION_WINDOW = 8;
+function isNegated(q: string, word: string): boolean {
+  const idx = q.indexOf(word);
+  if (idx < 0) return false;
+  const before = q.slice(Math.max(0, idx - NEGATION_WINDOW), idx);
+  return NEGATION_HINTS.some(h => before.includes(h));
+}
+
+/**
+ * 心理危机关键词。
+ * 处置路径与躯体急症不同（心理援助热线优先于 120），因此单独走一个分支，
+ * 不能复用 EMERGENCY_STEPS（那套是"拨打 120/不要自行驾车"）。
+ */
+const CRISIS_SYMPTOMS = ["不想活", "轻生", "自杀", "结束生命", "活着没意思"];
+const CRISIS_STEPS = [
+  "1. 请立刻联系身边可信任的人（家人、朋友、辅导员），不要独自承受；",
+  "2. 拨打全国 24 小时心理援助热线 12356，或当地心理危机干预热线；",
+  "3. 联系学校心理咨询中心预约紧急面谈；",
+  "4. 若已有自伤计划或行为，请立即拨打 120 或前往急诊。"
+];
+
 /** 极端指标阈值（最新记录命中即触发；与规则引擎同一份数据口径） */
 const EMERGENCY_INDICATORS: Array<{
   key: keyof HealthRecord;
@@ -719,6 +808,32 @@ const EMERGENCY_INDICATORS: Array<{
     name: "血氧饱和度",
     check: v => v < 90,
     reason: v => `血氧饱和度 ${v}%（<90）`
+  },
+  // —— 以下为补齐的下界阈值 ——
+  // 原实现只有上界：收缩压 80/50（休克血压）完全不触发，是明显的覆盖缺口。
+  {
+    key: "systolic",
+    name: "收缩压",
+    check: v => v <= 90,
+    reason: v => `收缩压 ${v} mmHg（≤90，提示休克或严重低血压）`
+  },
+  {
+    key: "diastolic",
+    name: "舒张压",
+    check: v => v <= 60,
+    reason: v => `舒张压 ${v} mmHg（≤60，提示休克或严重低血压）`
+  },
+  {
+    key: "heartRate",
+    name: "心率",
+    check: v => v < 40 || v > 130,
+    reason: v => `心率 ${v} 次/分（<40 或 >130）`
+  },
+  {
+    key: "fastingGlucose",
+    name: "空腹血糖",
+    check: v => v >= 33.3,
+    reason: v => `空腹血糖 ${v} mmol/L（≥33.3，提示高渗高血糖状态）`
   }
 ];
 
@@ -757,9 +872,20 @@ export function checkEmergency(
     }
   }
 
-  // 2) 危险症状关键词（用户主动提及）
+  // 2) 心理危机：处置路径与躯体急症不同，走心理援助通道而非 120
+  const crisis = CRISIS_SYMPTOMS.find(w => q.includes(w) && !isNegated(q, w));
+  if (crisis) {
+    return {
+      kind: "symptom",
+      reason: `您的问题中提到「${crisis}」，提示您可能正处于心理危机中，需要及时获得支持。`,
+      steps: CRISIS_STEPS,
+      boundary: BOUNDARY_TEXT
+    };
+  }
+
+  // 3) 危险症状关键词（用户主动提及，且不是否定/非本人语境）
   for (const [word, why] of EMERGENCY_SYMPTOMS) {
-    if (q.includes(word)) {
+    if (q.includes(word) && !isNegated(q, word)) {
       return {
         kind: "symptom",
         reason: `您的问题中提到「${word}」：${why}，属于需要紧急处置的情况。`,

@@ -70,13 +70,18 @@
           >高 {{ data.survey.riskDistribution.high }}</el-tag
         >
       </div>
+      <!-- clusterInfo 为空对象时不能渲染（旧写法 v-if="{}" 恒真，会显示版本 undefined） -->
       <p
-        v-if="data.survey.clusterInfo"
+        v-if="data.survey.clusterInfo?.version"
         style="margin-top: 10px; font-size: 12px; color: #9ca3af"
       >
-        AI 模型：LightGBM + KMeans（{{ data.survey.clusterInfo.version }}）·
-        数据模式 {{ data.survey.clusterInfo.trainingMode }} ·
-        当前冷启动阶段，真实调研数据持续积累中
+        行为画像模型：KMeans（{{ data.survey.clusterInfo.version }}）· 数据模式
+        {{ data.survey.clusterInfo.trainingMode }} · 真实样本
+        {{ data.survey.clusterInfo.realSamples ?? 0 }} 条 · 轮廓系数
+        {{ data.survey.clusterInfo.silhouette ?? "-" }}
+      </p>
+      <p v-else style="margin-top: 10px; font-size: 12px; color: #9ca3af">
+        行为画像模型未加载（cluster-model/metadata.json 不可用）
       </p>
     </el-card>
     <!-- 加载 / 空态 -->

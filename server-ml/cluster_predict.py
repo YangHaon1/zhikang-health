@@ -7,18 +7,10 @@ import os
 import pickle
 import json
 import numpy as np
-from feature import FEATURE_ORDER
+from feature import FEATURE_ORDER, FEATURE_DEFAULTS
 
 PKL_PATH = os.path.join(os.path.dirname(__file__), "cluster-model", "kmeans.pkl")
 META_PATH = os.path.join(os.path.dirname(__file__), "cluster-model", "metadata.json")
-
-# 簇 → 行为画像名（冷启动 k=3 时按簇心特征命名；真实数据重训后再校准）
-CLUSTER_NAMES = {
-    0: {"name": "规律平衡型", "desc": "作息与运动较均衡，生活节奏稳定"},
-    1: {"name": "轻度久坐型", "desc": "久坐中等，整体状态尚可，建议增加活动"},
-    2: {"name": "久坐高压型", "desc": "久坐时间长、熬夜偏多，需重点调整作息"},
-}
-
 
 _model = None
 _meta = None
@@ -39,7 +31,14 @@ def cluster_predict(raw: dict) -> dict:
     m = _load()
     if m is None:
         return {"available": False}
-    vec = [[float(raw.get(k, 0) or 0) for k in FEATURE_ORDER]]
+    # 与 model.predict 同口径：缺失值用训练集统计值填充，不能填 0
+    # （0 = 就寝 0 点 / BMI 0 / 睡眠 0 小时，在训练分布里是极端值，会把新用户判成最差簇）
+    vec = [
+        [
+            float(raw.get(k) if raw.get(k) not in (None, "") else FEATURE_DEFAULTS[k])
+            for k in FEATURE_ORDER
+        ]
+    ]
     X = m["scaler"].transform(vec)
     cid = int(m["kmeans"].predict(X)[0])
     dists = m["kmeans"].transform(X)[0]

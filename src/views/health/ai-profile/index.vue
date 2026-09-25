@@ -16,7 +16,8 @@ const generating = ref(false);
 const profile = ref<AiProfileView | null>(null);
 
 /** AI 分析过程步骤（纯展示） */
-const steps = ["数据采集", "健康分析", "生成画像"];
+// 与报告页保持一致的三段真实状态文案（不再叫"AI 生成过程"）
+const steps = ["数据分析完成", "风险计算完成", "建议生成完成"];
 
 async function load() {
   loading.value = true;
@@ -51,16 +52,22 @@ onMounted(load);
 <template>
   <div v-loading="loading" class="ai-profile-page">
     <template v-if="profile">
-      <!-- AI 分析过程步骤（纯展示） -->
+      <!--
+        分析状态：画像由后端一次生成（规则引擎 + 大模型润色总结），
+        这里只反映"已完成 / 正在生成"的真实状态，不模拟分步进度与百分比。
+      -->
       <div class="process-steps">
         <template v-for="(s, i) in steps" :key="s">
-          <div class="step done">
-            <span class="step-dot">{{ i + 1 }}</span>
+          <div class="step" :class="{ done: !generating }">
+            <span class="step-dot">{{ generating ? "…" : i + 1 }}</span>
             <span class="step-label">{{ s }}</span>
           </div>
           <div v-if="i < steps.length - 1" class="step-line" />
         </template>
       </div>
+      <p class="profile-note">
+        画像由规则引擎基于健康档案与近 7 天记录计算，大模型仅用于润色总结文案。
+      </p>
 
       <HealthProfileCard :profile="profile" />
       <AIAdviceList :advice="profile.suggestions" />
@@ -111,7 +118,7 @@ onMounted(load);
   justify-content: flex-end;
 }
 
-/* AI 分析过程步骤 */
+/* 分析状态步骤（真实状态，非伪进度） */
 .process-steps {
   display: flex;
   gap: 0;
@@ -121,6 +128,14 @@ onMounted(load);
   background: #fff;
   border: 1px solid #e6f0ea;
   border-radius: 16px;
+}
+
+.profile-note {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.6;
+  color: #9ca3af;
+  text-align: center;
 }
 
 .step {

@@ -10,11 +10,34 @@ import { analyzeHealth } from "../../../shared/health-engine.js";
 import { profileForEngine, recordsForEngine } from "./common.js";
 import { predictRisk, predictCluster } from "../../services/ml-client.js";
 import { analyzeHealthType } from "../../services/health-type.js";
+import { calculateBMI } from "../../../shared/health-score.js";
 
 const router = Router();
 
-/** 近7天每日记录聚合 → ML 特征 */
-function buildFeatures(userId: number): Record<string, number> {
+/**
+ * 年级文本 → 训练用的 grade_code（与合成数据的 1..6 对齐）。
+ * 之前对所有用户硬编码 grade_code=3，属于凭空捏造的特征。
+ */
+const GRADE_CODE: Record<string, number> = {
+  大一: 1,
+  大二: 2,
+  大三: 3,
+  大四: 4,
+  研一: 5,
+  研二: 6,
+  研三: 6
+};
+
+function gradeCodeOf(grade?: string | null): number | null {
+  if (!grade) return null;
+  return GRADE_CODE[grade] ?? null;
+}
+
+/** 近7天每日记录聚合 → ML 特征。同时返回记录天数，供数据充分度判断。 */
+function buildFeatures(userId: number): {
+  features: Record<string, number | null>;
+  days: number;
+} {
   const days = db
     .prepare(
       `SELECT sleep_hours, exercise_minutes, mood_score, sleep_quality, stress_level, diet_regularity
@@ -42,6 +65,8 @@ function buildFeatures(userId: number): Record<string, number> {
         sedentary_hours: number;
         study_hours: number;
         bedtime: string;
+        is_off_campus: number | null;
+        grade: string | null;
       }
     | undefined;
 
@@ -57,30 +82,36 @@ function buildFeatures(userId: number): Record<string, number> {
   const profile = profileForEngine(userId);
   const recs = recordsForEngine(userId);
   const latestWeight = recs[0]?.weight;
-  let bmi = 0;
+  // BMI 公式统一走 shared/health-score.calculateBMI（此前本文件内联了一份，是第 4 份实现）
+  let bmi: number | null = null;
   if (profile?.height && (latestWeight || profile.weight)) {
-    const w = latestWeight || profile.weight;
-    bmi = Math.round((w / Math.pow(profile.height / 100, 2)) * 10) / 10;
+    bmi = calculateBMI(profile.height, latestWeight || profile.weight);
   }
 
   return {
-    sleep_hours_mean: Number(avg(days.map(d => d.sleep_hours)).toFixed(2)),
-    sleep_below7_days: days.filter(d => (d.sleep_hours ?? 9) < 7).length,
-    sleep_quality_avg: Number(avg(days.map(d => d.sleep_quality)).toFixed(2)),
-    exercise_min_sum: days.reduce((s, d) => s + (d.exercise_minutes ?? 0), 0),
-    exercise_days: days.filter(d => (d.exercise_minutes ?? 0) > 0).length,
-    stress_avg: Number(avg(days.map(d => d.stress_level)).toFixed(2)),
-    stress_high_days: days.filter(d => d.stress_level === 3).length,
-    diet_reg_ratio:
-      days.filter(d => d.diet_regularity === "good").length /
-      (days.length || 1),
-    mood_avg: Number(avg(days.map(d => d.mood_score)).toFixed(2)),
-    study_hours: sp?.study_hours ?? 0,
-    sedentary_hours: sp?.sedentary_hours ?? 0,
-    bedtime_hour: bedtimeHour,
-    is_off_campus: 0,
-    grade_code: 3,
-    bmi
+    features: {
+      sleep_hours_mean: Number(avg(days.map(d => d.sleep_hours)).toFixed(2)),
+      sleep_below7_days: days.filter(d => (d.sleep_hours ?? 9) < 7).length,
+      sleep_quality_avg: Number(avg(days.map(d => d.sleep_quality)).toFixed(2)),
+      exercise_min_sum: days.reduce((s, d) => s + (d.exercise_minutes ?? 0), 0),
+      exercise_days: days.filter(d => (d.exercise_minutes ?? 0) > 0).length,
+      stress_avg: Number(avg(days.map(d => d.stress_level)).toFixed(2)),
+      stress_high_days: days.filter(d => d.stress_level === 3).length,
+      diet_reg_ratio:
+        days.filter(d => d.diet_regularity === "good").length /
+        (days.length || 1),
+      mood_avg: Number(avg(days.map(d => d.mood_score)).toFixed(2)),
+      // 缺失一律传 null：由 ML 侧按训练集统计值填充。
+      // 传 0 会被当成"极端行为"（就寝 0 点、BMI 0、久坐 0 小时），
+      // 实测新用户（全 0）被判 high / 0.904，属于必须修的方向性错误。
+      study_hours: sp?.study_hours ?? null,
+      sedentary_hours: sp?.sedentary_hours ?? null,
+      bedtime_hour: sp?.bedtime ? bedtimeHour : null,
+      is_off_campus: sp?.is_off_campus ?? null,
+      grade_code: gradeCodeOf(sp?.grade),
+      bmi: bmi
+    },
+    days: days.length
   };
 }
 
@@ -102,29 +133,90 @@ function saveSnapshot(
   );
 }
 
-/** 归一化 SHAP 贡献 → 0~100 相对重要度 */
+/**
+ * 归一化 SHAP 贡献 → 0~100 相对重要度（仅用于画条形图的长度）。
+ * 方向与说明一律透传后端 SHAP 结果，这里不做任何方向判断。
+ */
 function toImportance(
-  shapFactors: Array<{ label: string; contribution: number; direction: string }>
+  shapFactors: Array<{
+    factor?: string;
+    feature?: string;
+    label: string;
+    value?: number;
+    contribution?: number;
+    direction: string;
+    description?: string;
+  }>
 ) {
-  const abs = shapFactors.map(f => Math.abs(f.contribution));
+  const contrib = (f: (typeof shapFactors)[number]) =>
+    Math.abs(f.value ?? f.contribution ?? 0);
+  const abs = shapFactors.map(contrib);
   const max = Math.max(...abs, 0.0001);
   return shapFactors.map(f => ({
-    feature: f.label,
+    // 保留真实特征键（前端用作 :key），不再退化成中文文案
+    feature: f.factor ?? f.feature ?? f.label,
     label: f.label,
-    value: Math.round((Math.abs(f.contribution) / max) * 100),
-    direction: f.direction === "raise_risk" ? "risk_up" : "risk_down"
+    value: Math.round((contrib(f) / max) * 100),
+    // 真实贡献值，供前端展示，避免"只能看相对长度"
+    shap: f.value ?? f.contribution ?? 0,
+    direction: f.direction === "raise_risk" ? "risk_up" : "risk_down",
+    description: f.description ?? ""
   }));
 }
 
 router.get("/health/risk", authMiddleware, async (req, res) => {
   const userId = req.user!.id;
-  const features = buildFeatures(userId);
+  const { features, days } = buildFeatures(userId);
+
+  // 近 7 天没有任何每日记录 → 不做预测。
+  // 空输入落在训练分布之外，模型会给出无意义的 high 风险（实测 0.904），
+  // 直接返回"数据不足"，由前端引导用户先记录。
+  if (days === 0) {
+    res.json({
+      code: 0,
+      message: "数据不足，请先记录健康数据",
+      data: {
+        source: "insufficient",
+        riskLevel: "unknown",
+        riskProbability: 0,
+        dataQuality: { level: "empty", filledRatio: 0 },
+        shapFactors: [],
+        modelVersion: "none",
+        healthType: null,
+        modelExplain: { featureImportance: [] },
+        features
+      }
+    });
+    return;
+  }
+
   try {
-    const ml = await predictRisk(features);
+    const ml = await predictRisk(features as Record<string, number>);
+
+    // ML 侧判定数据不足（关键字段全缺）时，不把 unknown 当成真实结论展示
+    if (ml.sufficient === false) {
+      res.json({
+        code: 0,
+        message: ml.message ?? "数据不足，请补充健康记录",
+        data: {
+          source: "insufficient",
+          riskLevel: "unknown",
+          riskProbability: 0,
+          dataQuality: ml.dataQuality,
+          shapFactors: [],
+          modelVersion: ml.modelVersion,
+          healthType: analyzeHealthType(userId),
+          modelExplain: { featureImportance: [] },
+          features
+        }
+      });
+      return;
+    }
+
     saveSnapshot(userId, ml);
     let healthType = analyzeHealthType(userId);
     try {
-      const cluster = await predictCluster(features);
+      const cluster = await predictCluster(features as Record<string, number>);
       if (cluster.available && cluster.name && healthType) {
         healthType = {
           ...healthType,

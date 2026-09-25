@@ -26,6 +26,7 @@ import clusterStatsRouter from "./clusterStats.js";
 import agentRouter from "./agent.js";
 import planAgentRouter from "./planAgent.js";
 import reviewAgentRouter from "./reviewAgent.js";
+import agentWorkflowRouter from "./agentWorkflow.js";
 import studentProfileRouter from "./studentProfile.js";
 
 const router = Router();
@@ -52,6 +53,7 @@ router.use(clusterStatsRouter);
 router.use(agentRouter);
 router.use(planAgentRouter);
 router.use(reviewAgentRouter);
+router.use(agentWorkflowRouter);
 router.use(studentProfileRouter);
 
 export default router;

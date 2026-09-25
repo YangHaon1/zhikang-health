@@ -17,6 +17,7 @@ import type {
   AiProfileView,
   DailySummaryView,
   DailyTodayView,
+  DailyTrendItem,
   GoalProgressView,
   NormalizedDaily,
   SourceType,
@@ -393,6 +394,13 @@ export const getDailyToday = () => {
   return http.request<Result<DailyTodayView>>("get", "/api/health/daily/today");
 };
 
+/** 近 N 天生活记录（五维健康画像的数据来源） */
+export const getHealthDaily = (days = 7) => {
+  return http.request<Result<DailyTrendItem[]>>("get", "/api/health/daily", {
+    params: { days }
+  });
+};
+
 /** 提交/更新今日（或指定日期）生活记录，同日 UPSERT */
 export const submitDailyRecord = (
   data: Partial<NormalizedDaily> & { date?: string }
@@ -482,8 +490,9 @@ export interface RiskShapFactor {
 }
 
 export interface RiskPredictView {
-  source: "ml" | "rule";
-  riskLevel: "low" | "medium" | "high";
+  /** insufficient = 数据不足，后端拒绝预测（不给出风险结论） */
+  source: "ml" | "rule" | "insufficient";
+  riskLevel: "low" | "medium" | "high" | "unknown";
   riskProbability: number;
   dataQuality: { level: string; filledRatio: number };
   shapFactors: RiskShapFactor[];
@@ -499,11 +508,18 @@ export interface RiskPredictView {
     scores: { sleep: number; stress: number; exercise: number; diet: number };
   } | null;
   modelExplain?: {
+    // 数据全部来自后端 SHAP（explain.py），前端只渲染、不计算
     featureImportance: Array<{
+      /** 真实特征键名（如 stress_avg），用作 :key */
       feature: string;
       label: string;
+      /** 归一化后的相对重要度 0-100，仅用于条形图长度 */
       value: number;
-      direction: "risk_up" | "risk_down";
+      /** SHAP 原始贡献值（带符号），可用于展示 */
+      shap?: number;
+      direction: "risk_up" | "risk_down" | "unknown";
+      /** 后端生成的一句话说明 */
+      description?: string;
     }>;
   };
   features: Record<string, number>;

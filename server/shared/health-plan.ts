@@ -99,31 +99,9 @@ export interface PlanDraft {
   }>;
 }
 
-// ---------- 日期工具（本地时区字符串，UTC 运算避免时区偏移） ----------
-
-/** 本地日期 yyyy-MM-dd */
-export function fmtDate(d: Date): string {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(
-    d.getDate()
-  ).padStart(2, "0")}`;
-}
-
-/** 日期字符串 ± n 天（UTC 运算，输入须为 yyyy-MM-dd） */
-export function addDays(dateStr: string, n: number): string {
-  const [y, m, d] = dateStr.split("-").map(Number);
-  const dt = new Date(Date.UTC(y, m - 1, d));
-  dt.setUTCDate(dt.getUTCDate() + n);
-  return dt.toISOString().slice(0, 10);
-}
-
-/** 窗口天数（含首尾，b 必须 ≥ a，非法返回 0） */
-export function daysBetween(a: string, b: string): number {
-  const [ay, am, ad] = a.split("-").map(Number);
-  const [by, bm, bd] = b.split("-").map(Number);
-  if (!ay || !by) return 0;
-  const diff = Date.UTC(by, bm - 1, bd) - Date.UTC(ay, am - 1, ad);
-  return diff < 0 ? 0 : Math.round(diff / 86400000) + 1;
-}
+// ---------- 日期工具：统一收敛到 shared/date-utils.ts（此处仅再导出，保持老 import 路径可用） ----------
+export { fmtDate, addDays, daysBetween } from "./date-utils.js";
+import { addDays, daysBetween } from "./date-utils.js";
 
 // ---------- 任务类型元信息（前端标签/图标与后端校验共用） ----------
 

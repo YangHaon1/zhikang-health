@@ -293,4 +293,82 @@ describe("analyzeHealth（综合分析）", () => {
     expect(r.score).toBe(0);
     expect(r.items).toHaveLength(0);
   });
+
+  /**
+   * 以下为「黄金用例」：用手工给定的临床固定案例断言期望分数/等级。
+   * 之前测试多用 analyzeHealth 自身验证聚合结果（自证），
+   * 导致「未测项不归一化」这类方向性缺陷长期潜伏，故补充固定期望值。
+   */
+  describe("评分归一化：未测指标不进分母", () => {
+    it("仅测血压 200/120（三级高血压）不得判为低风险", () => {
+      const r = analyzeHealth(
+        [{ date: "2026-09-20", systolic: 200, diastolic: 120 } as never],
+        null
+      );
+      // 修复前：25/100 → 25 分 → 「低」，且无任何就医提醒
+      expect(r.score).toBe(100);
+      expect(r.level).toBe("极高");
+    });
+
+    it("仅测空腹血糖 20（危急值）不得判为低风险", () => {
+      const r = analyzeHealth(
+        [{ date: "2026-09-20", fastingGlucose: 20 } as never],
+        null
+      );
+      expect(r.score).toBe(100);
+      expect(r.level).toBe("极高");
+    });
+
+    it("仅测一项且正常时仍为低风险（不因未测而虚高）", () => {
+      const r = analyzeHealth(
+        [{ date: "2026-09-20", systolic: 110, diastolic: 70 } as never],
+        null
+      );
+      expect(r.score).toBe(0);
+      expect(r.level).toBe("低");
+    });
+  });
+
+  describe("高危保护：单项异常时总评不得低于「中」", () => {
+    it("多项已测但仅 LDL 异常（权重 10/100）时抬到 30 分", () => {
+      const r = analyzeHealth(
+        [
+          {
+            date: "2026-09-20",
+            systolic: 115,
+            diastolic: 75,
+            fastingGlucose: 5,
+            totalCholesterol: 4,
+            triglyceride: 1.2,
+            ldl: 6.0,
+            hdl: 1.5
+          } as never
+        ],
+        null
+      );
+      // 归一化后原始分为 10，高危保护抬到 30
+      expect(r.score).toBeGreaterThanOrEqual(30);
+      expect(r.level).not.toBe("低");
+    });
+
+    it("多项已测但仅 HDL 异常（权重 5/100）时抬到 30 分", () => {
+      const r = analyzeHealth(
+        [
+          {
+            date: "2026-09-20",
+            systolic: 115,
+            diastolic: 75,
+            fastingGlucose: 5,
+            totalCholesterol: 4,
+            triglyceride: 1.2,
+            ldl: 2.5,
+            hdl: 0.5
+          } as never
+        ],
+        null
+      );
+      expect(r.score).toBeGreaterThanOrEqual(30);
+      expect(r.level).not.toBe("低");
+    });
+  });
 });

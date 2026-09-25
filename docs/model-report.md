@@ -93,6 +93,51 @@ SHAP explanation（Top 影响因素）
 | v0.1 | 工程闭环验证：规则生成数据，跑通 数据→训练→预测→解释                                                                   |
 | v0.2 | 引入评估体系：Accuracy / Precision / Recall / F1 / ROC-AUC / 混淆矩阵，80/20 stratified split                          |
 | v0.3 | 支持真实学生调研数据训练：`dataset.py` 特征映射 + `metadata.json` 训练元数据 + synthetic/hybrid/real_priority 三档模式 |
+| v0.4 | （待做）真实量表标签接入 + SHAP 方向修复 + 缺失值中位数填充 + 空输入拒答守卫                                           |
+
+## 行为画像模型（KMeans）
+
+与风险预测并列的无监督模型，输入同为 15 维行为特征，输出生活方式画像簇与建议。
+
+| 项             | 当前值                                                               |
+| -------------- | -------------------------------------------------------------------- |
+| 模型           | KMeans（`kmeans-v0.2`），k 在 3~6 间按 silhouette 自动选择           |
+| 训练模式       | `synthetic_fallback`（真实样本 0，合成 600）                         |
+| 当前 k         | 3                                                                    |
+| **silhouette** | **0.066**（k=4: 0.063，k=5: 0.056，k=6: 0.050）                      |
+| 产物           | `cluster-model/kmeans.pkl` + `metadata.json` + `cluster-report.json` |
+
+**结论**：silhouette 远低于 0.25 的弱结构门槛，说明当前合成数据（单峰高斯分布）
+下**不存在显著的行为簇**。三个簇心在睡眠（7.31 / 7.07 / 7.29）、压力（2.00 / 1.88 / 1.83）
+等维度上差异极小，簇命名（`name_cluster()` 按簇心套阈值规则）本质仍是规则分型，
+聚类本身未提供增量信息。
+
+**处理方式**：真实问卷数据重训后复测 silhouette；若仍不显著，产品侧改用规则分型
+（`server/src/services/health-type.ts`，已实现且更可控），并在文档中如实说明。
+
+> 另：`cluster-model/metadata.json` 的版本键当前为 `version`，而读取方
+> （`cluster_predict.py`、`clusterStats.ts`、`analytics.ts`）读的是 `model_version`，
+> 导致版本号恒为默认值。重跑 `python clustering.py` 即可生成正确键名。
+
+## 当前状态与已知问题（2026-09-25 代码审查实测）
+
+> 本节记录对模型链路的实测发现，属于**待修复项**，修复后请更新本节并删除对应条目。
+
+| 编号 | 问题                                                                                                                                                                                    | 实测证据                                                                                 | 状态                         |
+| ---- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- | ---------------------------- |
+| M-1  | **模型文件在 Windows 下无法加载**。`lgbm.txt` 6995 行全为 CRLF（Git `core.autocrlf=true` 转换所致），LightGBM 报 `Model format error, expect a tree here`；转 LF 后加载成功（360 棵树） | `git config core.autocrlf` → `true`；`.gitattributes` 未标记模型文件                     | 待修（见 P0-1）              |
+| M-2  | **全零特征被判高风险**。`build_features` 缺失值补 0，而训练分布中 `bedtime_hour` 均值 23 → 空输入被判 `high / 0.904`                                                                    | 实测：`{全 None}` → `riskLevel=high, proba=0.904`                                        | 待修（见 P0-5）              |
+| M-3  | **SHAP 方向计算错误**。`explain.py` 对三分类取所有类平均（`sv.mean(axis=1)`），未取被预测类，正负贡献抵消                                                                               | 实测：健康人（睡 8h / 压力 1）输出「睡眠时长 +0.76 升高风险」「平均压力 +0.47 升高风险」 | 待修（见 P0-2）              |
+| M-4  | **聚类结构不显著**。k=3~6 的 silhouette 分别为 0.066 / 0.063 / 0.056 / 0.050                                                                                                            | `cluster-model/metadata.json`                                                            | 待评估（真实数据重训后复测） |
+| M-5  | **线上服务版本号与实际不一致**。在线返回 `lgbm-v0.2`，实际模型为 `lgbm-v0.3`                                                                                                            | `model.py:8` vs `model/metadata.json`                                                    | 待修                         |
+| M-6  | **真实样本为 0**，`training_mode = synthetic_only`                                                                                                                                      | `health_survey` 表 COUNT = 0                                                             | 采集中                       |
+
+### 关于指标偏高（Accuracy 0.981 / AUC 0.999）的正确解读
+
+当前标签由 `train.py` 的 `rule_label()` 规则生成，是**输入特征的确定性函数**。
+因此这三个指标说明的是「LightGBM 成功拟合了一套 if-else 规则」，**不能作为预测能力的证据**。
+真实量表标签（PSQI / PSS-10 / GHQ-12 / IPAQ）接入并重训后，指标大概率下降——
+**指标下降反而是模型开始学习真实规律的信号**，届时应在此处更新为真实指标。
 
 ## ⚠️ 限制
 

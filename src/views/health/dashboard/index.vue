@@ -6,6 +6,7 @@ import { message } from "@/utils/message";
 import { useUserStoreHook } from "@/store/modules/user";
 import {
   getDailyToday,
+  getHealthDaily,
   getHealthProfile,
   getHealthRecords,
   getHealthPlansToday,
@@ -24,8 +25,10 @@ import {
   buildEvidence,
   BOUNDARY_TEXT
 } from "@shared/health-engine";
+import { buildHealthDimensions } from "@shared/daily-health";
 import type {
   DailyTodayView,
+  DailyTrendItem,
   HealthProfile,
   HealthRecord,
   RiskEvidence,
@@ -33,6 +36,7 @@ import type {
 } from "@/types/health";
 import { isAnalyzable } from "@/types/health";
 import echarts from "@/plugins/echarts";
+import { fmtDate } from "@/utils/date";
 
 defineOptions({
   name: "HealthDashboard"
@@ -135,13 +139,6 @@ const theme = computed(() => (isDark.value ? "dark" : undefined));
 const trendRef = ref<HTMLDivElement>();
 let trendChart: ReturnType<typeof echarts.init> | null = null;
 
-/** 本地日期 yyyy-MM-dd */
-function fmtDate(d: Date): string {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(
-    d.getDate()
-  ).padStart(2, "0")}`;
-}
-
 /** 最新一条记录（按日期倒序） */
 const latest = computed<HealthRecord | null>(
   () => [...records.value].sort((a, b) => (a.date < b.date ? 1 : -1))[0] ?? null
@@ -185,6 +182,23 @@ async function loadDaily() {
   }
 }
 
+/** 今日记录保存成功：今日卡片与近 7 天画像数据需要一起刷新 */
+async function onDailySaved() {
+  await loadDaily();
+  await loadRecentDays();
+}
+
+/** 近 7 天生活记录：五维健康画像的唯一数据源 */
+const recentDays = ref<DailyTrendItem[]>([]);
+async function loadRecentDays() {
+  try {
+    const res = await getHealthDaily(7);
+    recentDays.value = (res.data ?? []) as DailyTrendItem[];
+  } catch {
+    recentDays.value = [];
+  }
+}
+
 /** V2.0：学生画像（作息/久坐等） */
 const studentProfile = ref<StudentProfile | null>(null);
 async function loadStudent() {
@@ -218,48 +232,20 @@ const riskLevelText = computed(() => {
 });
 
 /**
- * V2.0 五维健康画像（纯前端按已有今日数据规则估算，0-100）。
- * 不做疾病诊断，只反映近期生活习惯；无数据维度为 null（展示"暂未记录"）。
+ * V2.0 五维健康画像（0-100）。
+ *
+ * 计算全部交给共享层 buildHealthDimensions：
+ *   数据源 = 近 7 天真实生活记录（/api/health/daily?days=7）+ 学生画像作息，
+ *   前端只负责渲染，不再自己写档位常量。
+ * 采样不足 3 天的维度返回 null，展示"暂未记录"，绝不渲染成 0 分。
  */
-const fiveDimensions = computed(() => {
-  const t = dailyToday.value?.today as any;
-  const score = (v: number, good: number, bad: number) =>
-    Math.max(0, Math.min(100, Math.round(((v - bad) / (good - bad)) * 100)));
-
-  // 睡眠健康：时长 7-9h 满分
-  const sleep = t?.sleepHours != null ? score(t.sleepHours, 8, 4) : null;
-  // 运动健康：每日 30min 满分
-  const exercise =
-    t?.exerciseMinutes != null ? score(t.exerciseMinutes, 60, 0) : null;
-  // 压力状态：stressLevel 1小=好 3大=差
-  const stress = t?.stressLevel
-    ? t.stressLevel === 1
-      ? 85
-      : t.stressLevel === 2
-        ? 60
-        : 35
-    : null;
-  // 饮食规律
-  const diet =
-    t?.dietRegularity === "good"
-      ? 88
-      : t?.dietRegularity === "normal"
-        ? 62
-        : t?.dietRegularity === "poor"
-          ? 35
-          : null;
-  // 作息规律：有学生就寝/起床时间记录即视为规律
-  const routine =
-    studentProfile.value?.bedtime && studentProfile.value?.wakeTime ? 75 : null;
-
-  return [
-    { key: "sleep", label: "睡眠健康", value: sleep, color: "#6366f1" },
-    { key: "exercise", label: "运动健康", value: exercise, color: "#16a34a" },
-    { key: "stress", label: "压力状态", value: stress, color: "#f59e0b" },
-    { key: "diet", label: "饮食规律", value: diet, color: "#0ea5e9" },
-    { key: "routine", label: "作息规律", value: routine, color: "#8b5cf6" }
-  ];
-});
+const fiveDimensions = computed(() =>
+  buildHealthDimensions(recentDays.value, {
+    bedtime: studentProfile.value?.bedtime ?? null,
+    wakeTime: studentProfile.value?.wakeTime ?? null,
+    sedentaryHours: studentProfile.value?.sedentaryHours ?? null
+  })
+);
 
 /** V2.0 亚健康风险因素（生活习惯口径，非疾病诊断） */
 const riskFactors = computed(() => {
@@ -481,6 +467,7 @@ onMounted(() => {
   loadData();
   loadTodayPlans();
   loadDaily();
+  loadRecentDays();
   loadStudent();
   loadRisk();
 });
@@ -598,8 +585,14 @@ onBeforeUnmount(() => {
               />
             </div>
             <span class="dim-value">{{ d.value != null ? d.value : "—" }}</span>
+            <!-- basis 由共享层给出，交代分数依据，避免"黑箱打分" -->
+            <span class="dim-basis">{{ d.basis }}</span>
           </div>
         </div>
+        <p class="dim-note">
+          以上各维度由近 7 天实际记录统计得出（不足 3 天采样的维度显示"—"），
+          仅反映近期生活习惯，不构成医学诊断。
+        </p>
       </el-card>
 
       <el-card shadow="never" class="subhealth-card">
@@ -646,7 +639,7 @@ onBeforeUnmount(() => {
     <QuickDailyRecord
       v-model:visible="recordDialogVisible"
       :today="dailyToday?.today ?? null"
-      @saved="loadDaily"
+      @saved="onDailySaved"
     />
 
     <!-- 快捷入口：比赛演示导航（全部跳转已有页面） -->
@@ -953,6 +946,21 @@ onBeforeUnmount(() => {
   grid-template-columns: 72px 1fr 36px;
   gap: 12px;
   align-items: center;
+}
+
+/* 分数依据：跨满整行，不破坏三列栅格 */
+.dim-basis {
+  grid-column: 1 / -1;
+  margin-top: -6px;
+  font-size: 12px;
+  color: #9ca3af;
+}
+
+.dim-note {
+  margin: 10px 0 0;
+  font-size: 12px;
+  line-height: 1.6;
+  color: #9ca3af;
 }
 
 .dim-label {

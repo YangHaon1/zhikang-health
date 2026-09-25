@@ -6,16 +6,14 @@
 import { Router } from "express";
 import db from "../../db.js";
 import { authMiddleware } from "../../middleware/auth.js";
+import { fmtDate } from "../../../shared/date-utils.js";
 
 const router = Router();
 
 router.post("/health/seed-student", authMiddleware, (req, res) => {
   const userId = req.user!.id;
   const today = new Date();
-  const fmt = (d: Date) =>
-    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(
-      d.getDate()
-    ).padStart(2, "0")}`;
+  const fmt = fmtDate;
 
   // student_profile
   db.prepare(

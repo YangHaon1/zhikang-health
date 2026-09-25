@@ -334,6 +334,17 @@ export type {
   RecentDay
 } from "@shared/daily-health";
 
+/** GET /api/health/daily?days=N 返回的单日记录（五维画像数据源） */
+export type DailyTrendItem = {
+  date: string;
+  sleepHours: number | null;
+  exerciseMinutes: number | null;
+  moodScore: number | null;
+  sleepQuality?: number | null;
+  stressLevel?: number | null;
+  dietRegularity?: string | null;
+};
+
 /** GET /api/health/daily/today 返回的完整视图 */
 export type DailyTodayView = {
   today: NormalizedDaily & { date: string };

@@ -21,8 +21,7 @@ import {
   buildDailyAdvice,
   buildTodayIndex,
   validateDailyInput,
-  type NormalizedDaily,
-  type RecentDay
+  type NormalizedDaily
 } from "../../../shared/daily-health.js";
 import { analyzeHealth } from "../../../shared/health-engine.js";
 import { profileForEngine, recordsForEngine } from "./common.js";
@@ -182,11 +181,16 @@ router.get("/health/daily", (req, res) => {
   const userId = req.user!.id;
   const days = Math.max(1, Math.min(90, Number(req.query.days ?? 7) || 7));
   const rows = recentRows(userId, days);
-  const list: RecentDay[] = rows.map(r => ({
+  // 画像需要睡眠质量 / 压力 / 饮食规律三个亚健康维度，
+  // 这里一并返回（buildDailyAdvice 只用前三项，多给不影响既有逻辑）。
+  const list = rows.map(r => ({
     date: r.date,
     sleepHours: r.sleep_hours,
     exerciseMinutes: r.exercise_minutes,
-    moodScore: r.mood_score
+    moodScore: r.mood_score,
+    sleepQuality: r.sleep_quality,
+    stressLevel: r.stress_level,
+    dietRegularity: r.diet_regularity || null
   }));
   res.json({ code: 0, message: "ok", data: list });
 });

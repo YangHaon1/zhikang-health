@@ -5,6 +5,7 @@
 // 数据形态刻意设计成「前 78 天正常 + 最近 12 天异常」：
 // 趋势图能呈现「近期恶化」，报告与实时分级能稳定命中多项风险点，便于演示 AI 分析价值。
 import type { HealthProfile, HealthRecord } from "./health-engine.js";
+import { fmtDate as fmt } from "./date-utils.js";
 
 /** 演示档案：45 岁男性、身高 172cm、体重 78kg（BMI≈26.4 超重）、偶尔吸烟饮酒、几乎不运动 */
 export const DEMO_PROFILE: Omit<HealthProfile, "createTime"> = {
@@ -30,11 +31,6 @@ export const DEMO_DEVICE_NAME = "智康智能血压计 BP-200";
 
 /** 生成 90 天演示记录（按日期升序，最后一条为今天） */
 export function buildDemoRecords(today = new Date()): Array<HealthRecord> {
-  const fmt = (d: Date) =>
-    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(
-      d.getDate()
-    ).padStart(2, "0")}`;
-
   const records: Array<HealthRecord> = [];
   for (let i = 89; i >= 0; i--) {
     const d = new Date(today);

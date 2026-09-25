@@ -6,6 +6,7 @@
  */
 import type { HealthProfile } from "./health-engine.js";
 import type { RecentDay } from "./daily-health.js";
+import { calculateBMI } from "./health-score.js";
 
 export interface AiProfileResult {
   /** 健康分 0-100（越高越好） */
@@ -43,12 +44,9 @@ export function buildAiProfile(
 
   let score = clamp(100 - riskScore, 0, 100);
 
-  // --- BMI ---
-  let bmi: number | null = null;
-  if (profile?.height && profile?.weight) {
-    bmi = Number(
-      (profile.weight / Math.pow(profile.height / 100, 2)).toFixed(1)
-    );
+  // BMI 统一走 health-score.calculateBMI（此前本文件内联了一份公式，是第 2 份实现）
+  const bmi = calculateBMI(profile?.height ?? null, profile?.weight ?? null);
+  if (bmi !== null) {
     if (bmi >= 28) {
       score -= 15;
       problems.push(`BMI ${bmi}，达到肥胖范围`);

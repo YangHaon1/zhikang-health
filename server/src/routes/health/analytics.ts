@@ -9,7 +9,6 @@
 import { Router } from "express";
 import db from "../../db.js";
 import fs from "node:fs";
-import path from "node:path";
 import { adminOnly, authMiddleware } from "../../middleware/auth.js";
 import { profileForEngine, recordsForEngine, toText } from "./common.js";
 import {
@@ -24,6 +23,7 @@ import type {
 } from "../../../shared/health-analytics.js";
 import { actorOf, writeAudit } from "./audit.js";
 import { sharedUserIds } from "./authorizations.js";
+import { clusterMetaFile } from "../../paths.js";
 
 const router = Router();
 
@@ -99,22 +99,17 @@ function surveyStats() {
     e: number | null;
     d: number | null;
   };
-  const clusterMetaPath = path.resolve(
-    process.cwd(),
-    "..",
-    "server-ml",
-    "cluster-model",
-    "metadata.json"
-  );
   let clusterInfo: Record<string, unknown> = {};
+  const clusterMetaPath = clusterMetaFile();
   try {
     if (fs.existsSync(clusterMetaPath)) {
       const m = JSON.parse(fs.readFileSync(clusterMetaPath, "utf-8"));
       clusterInfo = {
-        version: m.model_version,
-        silhouette: m.silhouette,
-        trainingMode: m.training_mode,
-        realSamples: m.real_samples
+        // 统一键名 model_version（旧文件曾写作 version）
+        version: m.model_version ?? m.version ?? null,
+        silhouette: m.silhouette ?? null,
+        trainingMode: m.training_mode ?? null,
+        realSamples: m.real_samples ?? 0
       };
     }
   } catch {

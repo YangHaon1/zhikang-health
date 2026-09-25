@@ -12,6 +12,7 @@ import { getHealthRecords } from "@/api/health";
 import type { HealthRecord } from "@/types/health";
 import { isAnalyzable } from "@/types/health";
 import echarts from "@/plugins/echarts";
+import { fmtDate, lastNDays } from "@/utils/date";
 
 defineOptions({
   name: "HealthTrend"
@@ -27,20 +28,6 @@ const theme = computed(() => (isDark.value ? "dark" : undefined));
 
 const trendRef = ref<HTMLDivElement>();
 let chart: ReturnType<typeof echarts.init> | null = null;
-
-/** 本地日期 yyyy-MM-dd */
-function fmtDate(d: Date): string {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(
-    d.getDate()
-  ).padStart(2, "0")}`;
-}
-
-/** 最近 n 天日期区间 */
-function lastNDays(n: number): [string, string] {
-  const end = new Date();
-  const start = new Date(Date.now() - (n - 1) * 86400000);
-  return [fmtDate(start), fmtDate(end)];
-}
 
 const dateRange = ref<[string, string] | null>(lastNDays(30));
 function setRange(days: number | null) {

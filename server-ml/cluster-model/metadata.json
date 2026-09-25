@@ -1,5 +1,5 @@
 {
-  "version": "kmeans-v0.2",
+  "model_version": "kmeans-v0.2",
   "training_mode": "synthetic_fallback",
   "real_samples": 0,
   "synthetic_samples": 600,

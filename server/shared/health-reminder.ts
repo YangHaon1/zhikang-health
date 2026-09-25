@@ -14,6 +14,7 @@
  *
  * 前端经 `@shared` 别名引用，后端经相对路径引用。
  */
+import { fmtDate } from "./date-utils.js";
 
 // ---------- 提醒类型目录 ----------
 
@@ -98,11 +99,7 @@ export function minutesOfDay(value: unknown): number | null {
 // ---------- 本地日 / 时刻口径 ----------
 
 /** 本地日期 yyyy-MM-dd（站内提醒按**本地日**去重，跨时区不共用一条） */
-export function localDateKey(now: Date): string {
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(
-    now.getDate()
-  ).padStart(2, "0")}`;
-}
+export const localDateKey = (now: Date): string => fmtDate(now);
 
 /** 本地时刻 HH:mm（与 `normalizeTimeOfDay` 输出同口径，可直接比较） */
 export function localTimeKey(now: Date): string {

@@ -240,4 +240,71 @@ describe("buildEvidence（风险解释）", () => {
     expect(exp.conclusion).toContain("0 分");
     expect(exp.boundary).toBe(BOUNDARY_TEXT);
   });
+
+  /**
+   * 否定 / 非本人 / 既往 语境不得触发急救卡。
+   * 假阳性的危害大于假阴性：它会让用户忽视真正触发时的提示。
+   */
+  describe("emergency 否定语境过滤", () => {
+    it("否定表述不触发", () => {
+      expect(checkEmergency("我没有胸痛")).toBeNull();
+      expect(checkEmergency("我没有胸痛，就是有点累")).toBeNull();
+      expect(checkEmergency("我不会轻生的，别担心")).toBeNull();
+    });
+
+    it("非本人表述不触发", () => {
+      expect(checkEmergency("家人有抽搐史，我需要担心吗")).toBeNull();
+      expect(checkEmergency("朋友说胸痛很危险，是真的吗")).toBeNull();
+    });
+
+    it("既往 / 假设表述不触发", () => {
+      expect(checkEmergency("我以前有过晕厥，现在好了")).toBeNull();
+      expect(checkEmergency("如果我以后胸痛怎么办")).toBeNull();
+    });
+
+    it("当前发生的症状仍然必须触发（不能因过滤而漏报）", () => {
+      expect(checkEmergency("我现在胸痛得厉害")).not.toBeNull();
+      expect(checkEmergency("突然一侧肢体无力")).not.toBeNull();
+      expect(checkEmergency("我呼吸困难")).not.toBeNull();
+    });
+  });
+
+  describe("emergency 下界阈值与心理危机", () => {
+    it("低血压（休克）应触发", () => {
+      const card = checkEmergency("我有点头晕", {
+        systolic: 80,
+        diastolic: 50
+      } as never);
+      expect(card).not.toBeNull();
+      expect(card!.reason).toContain("收缩压");
+    });
+
+    it("心率异常应触发", () => {
+      expect(
+        checkEmergency("我不舒服", { heartRate: 35 } as never)
+      ).not.toBeNull();
+      expect(
+        checkEmergency("我不舒服", { heartRate: 145 } as never)
+      ).not.toBeNull();
+    });
+
+    it("高渗高血糖应触发", () => {
+      expect(
+        checkEmergency("我不舒服", { fastingGlucose: 35 } as never)
+      ).not.toBeNull();
+    });
+
+    it("心理危机走心理援助通道，而不是 120 处置步骤", () => {
+      const card = checkEmergency("我最近不想活了");
+      expect(card).not.toBeNull();
+      expect(card!.steps.join("")).toContain("12356");
+      expect(card!.steps.join("")).not.toContain("不要自行驾车");
+    });
+
+    it("正常指标不触发", () => {
+      expect(
+        checkEmergency("我觉得还好", { systolic: 120, diastolic: 75 } as never)
+      ).toBeNull();
+    });
+  });
 });

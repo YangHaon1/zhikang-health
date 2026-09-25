@@ -46,27 +46,75 @@ FEATURE_LABELS = {
 }
 
 
+# 训练集统计值（与 dataset._default_row 一致，取自合成数据的生成均值/中位数）。
+#
+# 为什么不能用 0 填充：
+#   0 在训练分布里是极端值而非「平均水平」——就寝 0 点、BMI 0、睡眠 0 小时
+#   都会被模型理解成「极端不健康」，导致新用户（什么都没填）被判成高风险。
+#   实测：全 0 输入 → riskLevel=high, proba=0.904。这是必须修的方向性错误。
+FEATURE_DEFAULTS = {
+    "sleep_hours_mean": 7.2,
+    "sleep_below7_days": 3,
+    "sleep_quality_avg": 2.2,
+    "exercise_min_sum": 120.0,
+    "exercise_days": 3,
+    "stress_avg": 1.9,
+    "stress_high_days": 1.5,
+    "diet_reg_ratio": 0.6,
+    "mood_avg": 2.1,
+    "study_hours": 7.0,
+    "sedentary_hours": 8.0,
+    "bedtime_hour": 23.0,
+    "is_off_campus": 0,
+    "grade_code": 3,
+    "bmi": 20.5,
+}
+
+# 关键字段：缺得越多，预测越不可信
+KEY_FIELDS = [
+    "sleep_hours_mean",
+    "exercise_min_sum",
+    "stress_avg",
+    "diet_reg_ratio",
+]
+
+
 def build_features(raw: dict) -> list[float]:
     """
-    输入原始 dict（字段名与 FEATURE_ORDER 一致，缺失给安全默认值），
-    输出按 FEATURE_ORDER 排列的特征向量。
+    输入原始 dict（字段名与 FEATURE_ORDER 一致）。
+    缺失 / 空值一律用训练集统计值填充，绝不填 0。
     """
     out: list[float] = []
     for k in FEATURE_ORDER:
         v = raw.get(k)
-        if v is None:
-            v = 0
+        if v is None or v == "":
+            v = FEATURE_DEFAULTS[k]
         out.append(float(v))
     return out
 
 
 def data_quality(raw: dict) -> dict:
-    """简单数据充分度：关键字段缺失越多，质量越低。"""
-    key_fields = [
-        "sleep_hours_mean", "exercise_min_sum",
-        "stress_avg", "diet_reg_ratio"
-    ]
-    present = sum(1 for f in key_fields if raw.get(f) not in (None, 0))
-    ratio = present / len(key_fields)
-    level = "high" if ratio >= 0.75 else "medium" if ratio >= 0.5 else "low"
+    """
+    数据充分度：关键字段缺失越多，质量越低。
+
+    level:
+      high    ≥75% 关键字段有值
+      medium  ≥50%
+      low     <50%
+      empty   一个关键字段都没有 → 调用方应拒绝预测，而不是给出"高风险"
+    """
+    present = sum(
+        1
+        for f in KEY_FIELDS
+        if raw.get(f) is not None and raw.get(f) != "" and raw.get(f) != 0
+    )
+    ratio = present / len(KEY_FIELDS)
+    if present == 0:
+        level = "empty"
+    elif ratio >= 0.75:
+        level = "high"
+    elif ratio >= 0.5:
+        level = "medium"
+    else:
+        level = "low"
     return {"level": level, "filledRatio": round(ratio, 2)}

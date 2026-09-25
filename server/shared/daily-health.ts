@@ -257,3 +257,178 @@ export function buildDailyAdvice(recent: RecentDay[]): string[] {
     );
   return advice;
 }
+
+// ---------- 五维健康画像（唯一源码，前后端共用） ----------
+
+/** 画像维度输入：近 N 天真实记录 + 学生画像 */
+export interface DimensionDay {
+  date?: string;
+  sleepHours?: number | null;
+  exerciseMinutes?: number | null;
+  moodScore?: number | null;
+  sleepQuality?: number | null;
+  stressLevel?: number | null;
+  dietRegularity?: string | null;
+}
+
+export interface DimensionProfile {
+  bedtime?: string | null;
+  wakeTime?: string | null;
+  sedentaryHours?: number | null;
+}
+
+export interface HealthDimension {
+  key: string;
+  label: string;
+  /** 0-100，null 表示该维度暂无数据（前端展示"暂未记录"，不得渲染成 0 分） */
+  value: number | null;
+  color: string;
+  /** 依据说明，用于向用户交代分数是怎么来的 */
+  basis: string;
+}
+
+/** 采样不足时的最小天数：低于此值不产出该维度分数 */
+const MIN_SAMPLES = 3;
+
+function avg(values: Array<number | null | undefined>): number | null {
+  const valid = values.filter(
+    (v): v is number => typeof v === "number" && Number.isFinite(v)
+  );
+  if (valid.length < MIN_SAMPLES) return null;
+  return valid.reduce((s, v) => s + v, 0) / valid.length;
+}
+
+/** 线性映射并夹到 0-100：value=good 得 100，value=bad 得 0 */
+function scale(v: number, good: number, bad: number): number {
+  const r = ((v - bad) / (good - bad)) * 100;
+  return Math.max(0, Math.min(100, Math.round(r)));
+}
+
+/**
+ * 五维健康画像。
+ *
+ * 与旧实现的区别：旧版在前端用**单日**数据 + 一组写死的档位（85/60/35、88/62/35、固定 75）
+ * 估算，既不是真实统计也不是引擎口径。这里改为：
+ *   · 取近 N 天有效采样求平均（不足 3 天则该维度返回 null，而不是编一个数）
+ *   · 作息规律按真实就寝时刻偏离 23:00 的程度计算，而不是"有记录就给 75"
+ *   · 每维附带 basis 说明，让分数可追溯
+ *
+ * 仅反映近期生活习惯，不做疾病诊断。
+ */
+export function buildHealthDimensions(
+  recent: DimensionDay[],
+  profile: DimensionProfile = {}
+): HealthDimension[] {
+  const days = recent ?? [];
+  const n = days.length;
+
+  // 睡眠：时长为主（7.5h 满分、4h 零分），睡眠质量作为 ±10 的修正
+  const sleepAvg = avg(days.map(d => d.sleepHours));
+  const qualityAvg = avg(days.map(d => d.sleepQuality));
+  let sleep: number | null = null;
+  let sleepBasis = "暂无足够睡眠记录";
+  if (sleepAvg != null) {
+    sleep = scale(sleepAvg, 7.5, 4);
+    if (qualityAvg != null) {
+      // 质量 1差/2一般/3好 → -10 / 0 / +10
+      sleep = Math.max(
+        0,
+        Math.min(100, sleep + Math.round((qualityAvg - 2) * 10))
+      );
+    }
+    sleepBasis = `近 ${n} 天平均睡眠 ${sleepAvg.toFixed(1)} 小时${
+      qualityAvg != null ? `，质量自评 ${qualityAvg.toFixed(1)}/3` : ""
+    }`;
+  }
+
+  // 运动：按日均分钟（30min 满分），同时参考有效运动天数占比
+  const exAvg = avg(days.map(d => d.exerciseMinutes));
+  let exercise: number | null = null;
+  let exBasis = "暂无足够运动记录";
+  if (exAvg != null) {
+    exercise = scale(exAvg, 30, 0);
+    const activeDays = days.filter(d => (d.exerciseMinutes ?? 0) >= 10).length;
+    exBasis = `日均运动 ${Math.round(exAvg)} 分钟，${n} 天中 ${activeDays} 天有活动`;
+  }
+
+  // 压力：1小=好(100) 3大=差(0)，取近 N 天平均
+  const stressAvg = avg(days.map(d => d.stressLevel));
+  let stress: number | null = null;
+  let stressBasis = "暂无足够压力记录";
+  if (stressAvg != null) {
+    stress = scale(stressAvg, 1, 3);
+    stressBasis = `近 ${n} 天平均压力 ${stressAvg.toFixed(1)}/3`;
+  }
+
+  // 饮食：规律(good)天数占比 → 0-100
+  const dietDays = days.filter(
+    d =>
+      d.dietRegularity === "good" ||
+      d.dietRegularity === "normal" ||
+      d.dietRegularity === "poor"
+  );
+  let diet: number | null = null;
+  let dietBasis = "暂无足够饮食记录";
+  if (dietDays.length >= MIN_SAMPLES) {
+    const good = dietDays.filter(d => d.dietRegularity === "good").length;
+    const normal = dietDays.filter(d => d.dietRegularity === "normal").length;
+    // good 记 1 分，normal 记 0.6 分
+    const ratio = (good + normal * 0.6) / dietDays.length;
+    diet = Math.max(0, Math.min(100, Math.round(ratio * 100)));
+    dietBasis = `${dietDays.length} 天中 ${good} 天规律、${normal} 天一般`;
+  }
+
+  // 作息：就寝时刻越接近 23:00 越高，偏离越多越低（不再"有记录就给 75"）
+  let routine: number | null = null;
+  let routineBasis = "未填写作息时间";
+  const bedtime = profile.bedtime;
+  if (bedtime) {
+    const m = /^(\d{1,2}):(\d{2})$/.exec(bedtime.trim());
+    if (m) {
+      let hour = Number(m[1]) + Number(m[2]) / 60;
+      if (hour < 12) hour += 24; // 凌晨算前一天深夜
+      // 23:00 满分；每偏离 1 小时扣 20 分；偏离 ≥5 小时为 0
+      const diff = Math.abs(hour - 23);
+      routine = Math.max(0, Math.min(100, Math.round(100 - diff * 20)));
+      routineBasis = `日常就寝 ${bedtime}${profile.wakeTime ? `，起床 ${profile.wakeTime}` : ""}`;
+    }
+  }
+
+  return [
+    {
+      key: "sleep",
+      label: "睡眠健康",
+      value: sleep,
+      color: "#6366f1",
+      basis: sleepBasis
+    },
+    {
+      key: "exercise",
+      label: "运动健康",
+      value: exercise,
+      color: "#16a34a",
+      basis: exBasis
+    },
+    {
+      key: "stress",
+      label: "压力状态",
+      value: stress,
+      color: "#f59e0b",
+      basis: stressBasis
+    },
+    {
+      key: "diet",
+      label: "饮食规律",
+      value: diet,
+      color: "#0ea5e9",
+      basis: dietBasis
+    },
+    {
+      key: "routine",
+      label: "作息规律",
+      value: routine,
+      color: "#8b5cf6",
+      basis: routineBasis
+    }
+  ];
+}
