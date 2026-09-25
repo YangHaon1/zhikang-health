@@ -1,6 +1,12 @@
 /**
  * 动态路由表（B2 由改造前的 mock 数据原样迁移，数据结构不变）。
- * 说明：rank 取值与前端 src/router/enums.ts 保持一致，前端菜单按 rank 排序。
+ *
+ * ⚠️ rank 是**本文件内部**的菜单排序序号，各自唯一即可，
+ * 与前端 src/router/enums.ts 的 0~7 那一套**不是同一套编号**，不要拿来对比；
+ * 本文件是菜单渲染排序的唯一依据（enums.ts 目前无任何引用方，属历史残留）。
+ *
+ * 新增菜单时请在 rank 表里取一个新的、未占用的序号 —— 两个路由撞号会让
+ * 菜单顺序取决于排序算法的稳定性，演示时可能莫名前后跳动。
  */
 
 const rank = {
@@ -19,7 +25,9 @@ const rank = {
   healthAiProfile: 12,
   healthRisk: 13,
   healthCompanion: 14,
-  systemUser: 15
+  systemUser: 15,
+  // 原写法直接写死 rank: 12，与 healthAiProfile 撞号，菜单顺序取决于排序稳定性
+  healthSurvey: 16
 };
 
 const healthShowcaseRouter = {
@@ -213,8 +221,8 @@ const healthSurveyRouter = {
   name: "HealthSurvey",
   meta: {
     icon: "ri:survey-line",
-    title: "健康调研",
-    rank: 12,
+    title: "menus.healthSurvey",
+    rank: rank.healthSurvey,
     roles: ["admin", "common"]
   }
 };

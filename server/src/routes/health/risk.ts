@@ -159,7 +159,15 @@ function toImportance(
     value: Math.round((contrib(f) / max) * 100),
     // 真实贡献值，供前端展示，避免"只能看相对长度"
     shap: f.value ?? f.contribution ?? 0,
-    direction: f.direction === "raise_risk" ? "risk_up" : "risk_down",
+    // direction 必须原样透传。SHAP 降级路径返回的是 unknown（只有全局 gain 重要性、
+    // 没有方向信息），若一律归成 risk_down，等于把「不知道」说成「降低风险」——
+    // 正是本次要修的"伪装方向"问题。前端对 unknown 会显示"方向待定"。
+    direction:
+      f.direction === "raise_risk"
+        ? "risk_up"
+        : f.direction === "lower_risk"
+          ? "risk_down"
+          : "unknown",
     description: f.description ?? ""
   }));
 }
@@ -226,8 +234,10 @@ router.get("/health/risk", authMiddleware, async (req, res) => {
           confidence: cluster.confidence ?? 0
         };
       }
-    } catch {
-      /* cluster 失败保留规则分型 */
+    } catch (err) {
+      // 聚类失败时保留规则分型，但必须留痕 ——
+      // 否则现场会看到「行为画像」这一栏是规则兜底出来的却毫无提示
+      console.warn("[risk] 聚类预测失败，保留规则分型:", err);
     }
     res.json({
       code: 0,

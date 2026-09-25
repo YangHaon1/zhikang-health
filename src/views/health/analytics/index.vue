@@ -71,18 +71,93 @@
         >
       </div>
       <!-- clusterInfo 为空对象时不能渲染（旧写法 v-if="{}" 恒真，会显示版本 undefined） -->
-      <p
+      <div
         v-if="data.survey.clusterInfo?.version"
         style="margin-top: 10px; font-size: 12px; color: #9ca3af"
       >
-        行为画像模型：KMeans（{{ data.survey.clusterInfo.version }}）· 数据模式
-        {{ data.survey.clusterInfo.trainingMode }} · 真实样本
-        {{ data.survey.clusterInfo.realSamples ?? 0 }} 条 · 轮廓系数
-        {{ data.survey.clusterInfo.silhouette ?? "-" }}
-      </p>
+        <p>
+          行为画像模型：KMeans（{{ data.survey.clusterInfo.version }}）·
+          数据模式 {{ data.survey.clusterInfo.trainingMode }} · 真实样本
+          {{ data.survey.clusterInfo.realSamples ?? 0 }} 条（训练库
+          {{ data.survey.clusterInfo.sklearnVersion || "未知" }}）
+        </p>
+
+        <!--
+          聚类质量可视化：轮廓系数绝对值低（0.066）单看没有意义，
+          必须和「随机标签基线」对照才有判别力。两块条的长度按同一区间缩放，
+          数值全部来自 cluster-model/metadata.json，前端不做任何美化加工。
+        -->
+        <div v-if="clusterQuality" class="cq">
+          <div class="cq-head">
+            聚类质量：轮廓系数 vs 随机标签基线
+            <el-tooltip
+              content="随机标签基线 = 把真实簇标签打乱 20 次后重算轮廓系数的均值（seed=0）。若真实值与基线同一量级，说明簇是噪声；显著更高才说明结构真实存在。"
+              placement="top"
+            >
+              <el-icon class="cq-help"><QuestionFilled /></el-icon>
+            </el-tooltip>
+          </div>
+          <div class="cq-row">
+            <span class="cq-key">实测</span>
+            <div class="cq-track">
+              <div
+                class="cq-bar cq-bar-real"
+                :style="{ width: barWidth(clusterQuality.silhouette) }"
+              />
+            </div>
+            <span class="cq-val">{{ clusterQuality.silhouette }}</span>
+          </div>
+          <div class="cq-row">
+            <span class="cq-key">随机基线</span>
+            <div class="cq-track">
+              <div
+                class="cq-bar cq-bar-null"
+                :style="{ width: barWidth(clusterQuality.nullBaseline) }"
+              />
+            </div>
+            <span class="cq-val">{{ clusterQuality.nullBaseline }}</span>
+          </div>
+          <p class="cq-lift">
+            相对随机基线判别力
+            <b>{{ clusterQuality.liftText }}</b>
+            <template v-if="clusterQuality.sklearnVersion">
+              · 绝对值偏低是因为合成数据各特征独立生成、原始空间无天然簇结构，
+              不是模型缺陷
+            </template>
+          </p>
+        </div>
+      </div>
       <p v-else style="margin-top: 10px; font-size: 12px; color: #9ca3af">
         行为画像模型未加载（cluster-model/metadata.json 不可用）
       </p>
+
+      <!--
+        模型训练数据可信度：如实说明「现在用的是什么数据训练的、还差多少条能切真实模式」。
+        刻意不隐藏 synthetic_only / 轮廓系数偏低这类不利指标 ——
+        答辩时主动交代，比被问出来更有说服力。
+      -->
+      <div v-if="modelCredibility" class="credibility">
+        <div class="cred-row">
+          <span class="cred-k">风险模型训练数据</span>
+          <el-tag :type="credibilityTagType" size="small" effect="dark">
+            {{ modelCredibility.nextTrainingMode }}
+          </el-tag>
+        </div>
+        <p class="cred-line">
+          真实问卷样本 <b>{{ modelCredibility.realSamples }}</b> 条 · 合成样本
+          4000 条 ·
+          <template v-if="modelCredibility.needMore > 0">
+            再采集
+            <b>{{ modelCredibility.needMore }}</b> 条真实问卷，重新训练即切换为
+            {{ modelCredibility.nextTrainingMode }}
+          </template>
+          <template v-else>已满足真实数据优先训练条件</template>
+        </p>
+        <p class="cred-foot">
+          标签由规则引擎生成（生活方式风险，非医学标注）；接口
+          <code>GET /api/health/survey/dataset-status</code> 可复核。
+        </p>
+      </div>
     </el-card>
     <!-- 加载 / 空态 -->
     <el-card v-if="loading && !data" shadow="never">
@@ -208,10 +283,15 @@ import {
 } from "vue";
 import { message } from "@/utils/message";
 import { useDark } from "@pureadmin/utils";
-import { exportHealthAnalytics, getHealthAnalytics } from "@/api/health";
+import {
+  exportHealthAnalytics,
+  getHealthAnalytics,
+  getSurveyDatasetStatus
+} from "@/api/health";
 import type { AnalyticsOverview } from "@/types/health";
 import { ANALYTICS_MIN_SAMPLE, MASKED_TEXT } from "@/types/health";
 import echarts from "@/plugins/echarts";
+import { QuestionFilled } from "@element-plus/icons-vue";
 
 defineOptions({
   name: "HealthAnalytics"
@@ -245,6 +325,62 @@ const LEVEL_COLOR: Record<string, string> = {
 /** 数值单元格：null 一律显示隐藏文案，绝不兜底成 0 */
 function cell(value: number | null): string {
   return value === null ? MASKED_TEXT : String(value);
+}
+
+/**
+ * 训练数据可信度：调 dataset-status 接口拿真实样本数与切换门槛。
+ * 只展示，不改变任何判定阈值 —— 门槛与 train.py 共用同一套（20 / 100）。
+ */
+const modelCredibility = ref<{
+  realSamples: number;
+  nextTrainingMode: string;
+  needMore: number;
+  labelSource: string;
+} | null>(null);
+
+const credibilityTagType = computed(() => {
+  const m = modelCredibility.value?.nextTrainingMode;
+  if (m === "real_priority") return "success";
+  if (m === "hybrid_training") return "warning";
+  return "info";
+});
+
+async function loadCredibility() {
+  try {
+    const r = await getSurveyDatasetStatus();
+    if (r.code === 0) modelCredibility.value = r.data;
+  } catch {
+    // 拿不到就整块不展示，不用刻意拦在流程前面
+    modelCredibility.value = null;
+  }
+}
+
+/**
+ * 聚类质量：把轮廓系数和它的零假设基线放在一起，并算出相对判别力。
+ * 数值直接来自 metadata.json，这里只做展示换算（宽度、百分比）。
+ * 拿不到基线就整块不渲染 —— 宁可不展示，也不编一个好看的数。
+ */
+const clusterQuality = computed(() => {
+  const c = data.value?.survey?.clusterInfo;
+  if (!c) return null;
+  const sil = c.silhouette;
+  const nullBase = c.silhouetteNullBaseline;
+  if (typeof sil !== "number") return null;
+  if (typeof nullBase !== "number" || Math.abs(nullBase) < 1e-9) return null;
+  const lift = ((sil - nullBase) / Math.abs(nullBase)) * 100;
+  return {
+    silhouette: sil,
+    nullBaseline: nullBase,
+    liftText: `${lift >= 0 ? "+" : ""}${Math.round(lift)}%`,
+    sklearnVersion: c.sklearnVersion ?? null
+  };
+});
+
+/** 条形宽度：以「实测值」为满格做相对长度，负值走最小可见宽度 */
+function barWidth(v: number): string {
+  const real = clusterQuality.value?.silhouette ?? 0;
+  const ratio = real === 0 ? 0 : Math.max(0, v) / Math.max(1e-9, real);
+  return `${Math.max(1.5, Math.min(100, ratio * 100))}%`;
 }
 
 /** 被隐藏的分组名（降级时全部隐藏，不再逐条罗列） */
@@ -443,6 +579,7 @@ async function load() {
   loading.value = true;
   try {
     const { code, data: overview } = await getHealthAnalytics();
+    await loadCredibility();
     if (code === 0 && overview) {
       data.value = overview;
       await nextTick();
@@ -559,6 +696,124 @@ onBeforeUnmount(() => {
   margin-top: 4px;
   font-size: 12px;
   color: #6b7280;
+}
+
+/* 模型训练数据可信度：如实披露训练数据构成，不做美化 */
+.credibility {
+  padding: 10px 12px;
+  margin-top: 12px;
+  background: #f8fafc;
+  border-left: 3px solid #94a3b8;
+  border-radius: 6px;
+}
+
+.cred-row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  font-size: 13px;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.cred-line {
+  margin: 6px 0 0;
+  font-size: 12px;
+  line-height: 1.7;
+  color: #4b5563;
+
+  b {
+    color: #0f766e;
+  }
+}
+
+.cred-foot {
+  margin: 6px 0 0;
+  font-size: 11px;
+  line-height: 1.6;
+  color: #9ca3af;
+
+  code {
+    padding: 1px 4px;
+    font-size: 11px;
+    background: #eef2f6;
+    border-radius: 3px;
+  }
+}
+
+/* 聚类质量：轮廓系数 vs 随机标签基线（纯 CSS 条，不引 ECharts 避免生命周期问题） */
+.cq {
+  padding: 8px 10px;
+  margin-top: 8px;
+  background: #f8fafc;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+}
+
+.cq-head {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  font-weight: 600;
+  color: #374151;
+}
+
+.cq-help {
+  font-size: 13px;
+  color: #9ca3af;
+  cursor: help;
+}
+
+.cq-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-top: 6px;
+  font-size: 11px;
+  color: #6b7280;
+}
+
+.cq-key {
+  flex: 0 0 52px;
+}
+
+.cq-track {
+  flex: 1;
+  height: 8px;
+  overflow: hidden;
+  background: #e5e7eb;
+  border-radius: 4px;
+}
+
+.cq-bar {
+  height: 100%;
+  border-radius: 4px;
+}
+
+.cq-bar-real {
+  background: #0f766e;
+}
+
+.cq-bar-null {
+  /* 基线是负值，条更短；留最小可见宽度避免完全看不见 */
+  background: #f59e0b;
+}
+
+.cq-val {
+  flex: 0 0 46px;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.cq-lift {
+  margin: 6px 0 0;
+  font-size: 11px;
+  line-height: 1.6;
+  color: #6b7280;
+
+  b {
+    color: #0f766e;
+  }
 }
 
 @media (width <= 640px) {

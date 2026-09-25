@@ -126,8 +126,11 @@ export async function analyzeHealth(
         source: "ai"
       };
     }
-  } catch {
-    /* fallthrough */
+  } catch (err) {
+    // 静默降级到这里，界面只会看到规则文案、看不出是兜底来的。
+    // 现场如果展示的是规则结果，必须能在服务端日志里查到原因，
+    // 否则「AI 没输出」和「AI 输出了但解析失败」无从区分。
+    console.warn("[health-agent] LLM 解析失败，降级为规则分析:", err);
   }
   return ruleAnalysis(userId, risk, healthTypeName);
 }

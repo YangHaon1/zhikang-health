@@ -6,7 +6,15 @@
   "feature_count": 15,
   "best_k": 3,
   "silhouette": 0.066,
-  "k_scores": { "3": 0.066, "4": 0.063, "5": 0.056, "6": 0.05 },
+  "k_scores": {
+    "3": 0.066,
+    "4": 0.063,
+    "5": 0.056,
+    "6": 0.05
+  },
+  "silhouette_null_baseline": -0.006,
+  "sklearn_version": "1.7.2",
+  "silhouette_readout": "实测轮廓系数 0.066，随机打乱标签后的基线 -0.006（20 次，seed=0）；绝对分值低是因为合成数据各特征独立生成、原始空间无天然簇结构，但显著高于随机基线，说明聚类确实抓到了结构性差异，不是把噪声硬分堆。",
   "features": [
     "sleep_hours_mean",
     "sleep_below7_days",

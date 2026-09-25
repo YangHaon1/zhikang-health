@@ -32,3 +32,11 @@ export function mlAssetPath(...segments: string[]): string {
 /** cluster-model/metadata.json 绝对路径（不存在时返回首选候选，交由调用方 existsSync） */
 export const clusterMetaFile = (): string =>
   mlAssetPath("cluster-model", "metadata.json");
+
+/**
+ * server-ml 目录绝对路径（同样不依赖 cwd）。
+ * 用于「把真实问卷导出成训练数据集」这类需要落盘的产物目录。
+ */
+export function mlDir(): string {
+  return mlAssetPath();
+}

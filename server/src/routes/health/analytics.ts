@@ -108,6 +108,10 @@ function surveyStats() {
         // 统一键名 model_version（旧文件曾写作 version）
         version: m.model_version ?? m.version ?? null,
         silhouette: m.silhouette ?? null,
+        // 零假设对照：随机打乱标签后的轮廓系数均值。
+        // 前端据此解释「0.066 偏低但不是瞎分」—— 只有显著高于基线才说明簇结构真实存在。
+        silhouetteNullBaseline: m.silhouette_null_baseline ?? null,
+        sklearnVersion: m.sklearn_version ?? null,
         trainingMode: m.training_mode ?? null,
         realSamples: m.real_samples ?? 0
       };

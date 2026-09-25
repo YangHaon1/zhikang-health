@@ -7,12 +7,12 @@ import {
   getHealthRisk,
   getCoachPlan,
   confirmCoachPlan,
-  getHealthAgentAnalysis,
-  getHealthAgentPlan,
+  getHealthAgentWorkflow,
   type RiskPredictView,
   type CoachPlanView,
   type HealthAgentAnalysis,
-  type HealthAgentPlan
+  type HealthAgentPlan,
+  type HealthAgentReviewResult
 } from "@/api/health";
 import type { AiProfileView } from "@/types/health";
 import RiskScoreCard from "@/components/health/ai/RiskScoreCard.vue";
@@ -27,6 +27,23 @@ const profile = ref<AiProfileView | null>(null);
 const risk = ref<RiskPredictView | null>(null);
 const agent = ref<HealthAgentAnalysis | null>(null);
 const agentPlan = ref<HealthAgentPlan | null>(null);
+/** 链路真实数据来源（ai = 大模型产出 / rule = 规则降级），用于向评委交代"这步是谁算的" */
+const agentSteps = ref<
+  Array<{ name: string; source: "ai" | "rule"; degraded: boolean }>
+>([]);
+/** 编排器在 Analyze 与 Plan 之间搬运的上下文，页面展示以证明链路真实存在 */
+const agentContext = ref<{
+  risk?: string;
+  reason?: string;
+  summary: string;
+  healthType: string;
+} | null>(null);
+/** 链路第三步（复评）结果，由编排器一并返回 */
+const wfReview = ref<HealthAgentReviewResult | null>(null);
+const stepLabel = (s: { name: string; source: "ai" | "rule" }) =>
+  s.source === "ai" ? "AI" : "规则";
+const stepName = (n: string) =>
+  n === "analyze" ? "健康分析" : n === "plan" ? "方案生成" : "效果复评";
 
 onMounted(async () => {
   loading.value = true;
@@ -34,10 +51,19 @@ onMounted(async () => {
     const [p, r] = await Promise.all([getAiProfile(), getHealthRisk()]);
     if (p.code === 0) profile.value = p.data;
     if (r.code === 0) risk.value = r.data;
-    const a = await getHealthAgentAnalysis();
-    if (a.code === 0) agent.value = a.data;
-    const p2 = await getHealthAgentPlan();
-    if (p2.code === 0) agentPlan.value = p2.data;
+
+    // Agent 链路走服务端编排：Analyze → Plan 一次调用，
+    // Plan 收到的就是本次 Analyze 的结论（而不是前端自己拼两次请求）。
+    const w = await getHealthAgentWorkflow();
+    if (w.code === 0) {
+      agent.value = w.data.analysis;
+      agentPlan.value = w.data.plan;
+      agentSteps.value = w.data.steps;
+      agentContext.value = w.data.context;
+      wfReview.value = w.data.review ?? null;
+    }
+  } catch {
+    /* 降级为空态，页面其余模块照常展示 */
   } finally {
     loading.value = false;
   }
@@ -239,6 +265,43 @@ async function adopt() {
           以上归因来自模型 SHAP
           单样本解释，仅表示各因素对本次判定的贡献方向与相对大小。
         </p>
+      </div>
+
+      <!-- Agent 链路：明确写出"Analyze 的结论真的传给了 Plan" -->
+      <div v-if="agentSteps.length" class="agent-chain">
+        <p class="chain-kicker">AI Agent 执行链路</p>
+        <div class="chain-row">
+          <span
+            v-for="s in agentSteps"
+            :key="s.name"
+            class="chain-node"
+            :class="{ degraded: s.degraded }"
+          >
+            <b>{{ stepLabel(s) }}</b
+            ><em>{{ stepName(s.name) }}</em>
+          </span>
+        </div>
+        <p v-if="agentContext?.summary" class="chain-note">
+          Plan 接收到的分析结论（{{ agentContext.summary.length }} 字）：「{{
+            agentContext.summary
+          }}」
+        </p>
+        <!--
+          第三步复评：编排器把 Review 的结论一并返回。旧版前端类型里没声明这个字段，
+          接口明明返回了、界面却只画两步 —— 等于演示时白跑一遍复评。
+        -->
+        <div v-if="wfReview" class="chain-review">
+          <p class="chain-kicker">复评结论</p>
+          <p v-if="wfReview.summary" class="chain-note">
+            {{ wfReview.summary }}
+          </p>
+          <p v-if="wfReview.evaluation" class="chain-note">
+            评估：{{ wfReview.evaluation }}
+          </p>
+          <ul v-if="wfReview.nextSuggestions?.length" class="chain-list">
+            <li v-for="(s, i) in wfReview.nextSuggestions" :key="i">{{ s }}</li>
+          </ul>
+        </div>
       </div>
 
       <div class="coach-entry" @click="router.push('/health/chat')">
@@ -448,6 +511,86 @@ async function adopt() {
   font-size: 12px;
   line-height: 1.6;
   color: #9ca3af;
+}
+
+.agent-chain {
+  padding: 16px 20px;
+  background: #fff;
+  border: 1px dashed #c7d2fe;
+  border-radius: 14px;
+}
+
+.chain-kicker {
+  margin: 0 0 10px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #6366f1;
+}
+
+.chain-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
+.chain-node {
+  display: flex;
+  gap: 6px;
+  align-items: baseline;
+  padding: 6px 12px;
+  font-size: 12px;
+  background: #eef2ff;
+  border-radius: 999px;
+
+  b {
+    font-weight: 700;
+    color: #4338ca;
+  }
+
+  em {
+    font-style: normal;
+    color: #4b5563;
+  }
+
+  &.degraded {
+    background: #fef3c7;
+
+    b {
+      color: #b45309;
+    }
+  }
+}
+
+.chain-note {
+  margin: 10px 0 0;
+  font-size: 12px;
+  line-height: 1.7;
+  color: #6b7280;
+}
+
+.chain-review {
+  padding: 10px 12px;
+  margin-top: 10px;
+  background: #f8fafc;
+  border-radius: 8px;
+
+  .chain-kicker {
+    margin-bottom: 6px;
+    color: #0f766e;
+  }
+
+  .chain-note {
+    margin-top: 4px;
+  }
+}
+
+.chain-list {
+  padding-left: 18px;
+  margin: 6px 0 0;
+  font-size: 12px;
+  line-height: 1.8;
+  color: #6b7280;
 }
 
 .coach-entry {

@@ -214,8 +214,12 @@ export async function reviewPlan(
         source: "ai"
       };
     }
-  } catch {
-    /* fallthrough */
+  } catch (err) {
+    // 同上：复评静默降级会让评委把规则总结误当成 AI 复评结论
+    console.warn(
+      "[health-review-agent] LLM 复评解析失败，降级为规则复评:",
+      err
+    );
   }
 
   return {

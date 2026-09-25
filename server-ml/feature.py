@@ -79,18 +79,42 @@ KEY_FIELDS = [
 ]
 
 
+# 合法取值可以是 0 的字段：「0 天」「0 次」「不在校外」都是真实语义，
+# 这些地方的 0 必须原样喂给模型，不能当成没填。
+ZERO_VALID = {"exercise_days", "sleep_below7_days", "is_off_campus"}
+
+# 其余字段的 0 只可能是「没填」或离谱值：睡眠 0 小时、BMI 0、压力 0 分、
+# 睡眠质量 0 分（训练区间是 1~3）。这类 0 一旦原样进模型，
+# 会被理解成极端不健康，正是 FEATURE_DEFAULTS 存在要避免的方向性错误。
+ZERO_IS_MISSING = [k for k in FEATURE_ORDER if k not in ZERO_VALID]
+
+
 def build_features(raw: dict) -> list[float]:
     """
     输入原始 dict（字段名与 FEATURE_ORDER 一致）。
-    缺失 / 空值一律用训练集统计值填充，绝不填 0。
+    缺失 / 空值 / 「只可能是没填的 0」一律用训练集统计值填充，绝不填 0。
+
+    ⚠️ 之前只判 `v is None or v == ""`，数据库把「未填写」存成 0 时会原样透传，
+    于是 features 里出现 0，data_quality 又按「!=0」计成缺失 —— 两个口径打架，
+    演示账号的风险判定被一批分布外的 0 推着走。这里把两种口径统一到「模型实际吃的值」。
     """
     out: list[float] = []
     for k in FEATURE_ORDER:
         v = raw.get(k)
         if v is None or v == "":
             v = FEATURE_DEFAULTS[k]
+        elif k in ZERO_IS_MISSING and isinstance(v, (int, float)) and float(v) == 0:
+            v = FEATURE_DEFAULTS[k]
         out.append(float(v))
     return out
+
+
+def is_missing(raw: dict, key: str) -> bool:
+    """某个特征是否「没填」—— 与 build_features 的填充判定完全同口径。"""
+    v = raw.get(key)
+    if v is None or v == "":
+        return True
+    return key in ZERO_IS_MISSING and isinstance(v, (int, float)) and float(v) == 0
 
 
 def data_quality(raw: dict) -> dict:

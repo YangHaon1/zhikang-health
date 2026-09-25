@@ -29,3 +29,7 @@ __pycache__/
 *.pyd
 .pytest_cache/
 *.log
+
+# 真实问卷导出的训练数据集（由 /api/health/survey/export-dataset 生成，含用户作答，不入库）
+server-ml/real_survey.db
+server-ml/real_survey.db.*

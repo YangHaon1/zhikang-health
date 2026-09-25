@@ -169,6 +169,17 @@ export type DeviceSyncResult = {
   records: HealthRecord[];
 };
 
+/**
+ * 大模型调用的超时（毫秒）。
+ *
+ * 全局 axios 默认 timeout = 10000（见 src/utils/http/index.ts），但后端 LLM 侧超时是 30s，
+ * 且 agent 工作流会把 Analyze / Plan（/ Review）**串行**编排，最坏情况接近 90s。
+ * 若沿用 10s，前端会在服务端还在推理时先一步中断，页面停在 loading 且报「网络超时」——
+ * 演示现场一次网络抖动就会把 AI 链路整体打断。因此所有走大模型的接口统一放宽到 90s。
+ * 非 AI 接口仍走 10s 默认，避免慢查询把连接占满。
+ */
+export const LLM_TIMEOUT = 90_000;
+
 /** 模拟设备同步：把一批测量值转成 device 来源的记录 */
 export const syncDeviceMeasurements = (data: {
   device: string;
@@ -423,7 +434,9 @@ export const getAiProfile = () => {
 export const generateAiProfile = () => {
   return http.request<Result<AiProfileView>>(
     "post",
-    "/api/ai/profile/generate"
+    "/api/ai/profile/generate",
+    undefined,
+    { timeout: LLM_TIMEOUT }
   );
 };
 
@@ -441,7 +454,9 @@ export const getDailySummary = () => {
 export const generateDailySummary = () => {
   return http.request<Result<DailySummaryView>>(
     "post",
-    "/api/ai/daily-summary/generate"
+    "/api/ai/daily-summary/generate",
+    undefined,
+    { timeout: LLM_TIMEOUT }
   );
 };
 
@@ -609,7 +624,9 @@ export interface HealthAgentAnalysis {
 export const getHealthAgentAnalysis = () => {
   return http.request<Result<HealthAgentAnalysis>>(
     "post",
-    "/api/health/agent/analyze"
+    "/api/health/agent/analyze",
+    undefined,
+    { timeout: LLM_TIMEOUT }
   );
 };
 
@@ -628,7 +645,9 @@ export interface HealthAgentPlan {
 export const getHealthAgentPlan = () => {
   return http.request<Result<HealthAgentPlan>>(
     "post",
-    "/api/health/agent/plan"
+    "/api/health/agent/plan",
+    undefined,
+    { timeout: LLM_TIMEOUT }
   );
 };
 
@@ -646,10 +665,65 @@ export interface HealthAgentReview {
   confidence: "high" | "low";
   source: "ai" | "rule";
 }
+/**
+ * Agent 工作流一次调用完成 Analyze → Plan（→ Review）。
+ * 由服务端 services/agent-orchestrator.ts 编排并搬运上下文，
+ * 前端不再自己串行发两次请求（那样既慢，也无法保证 Plan 拿到的是本次 Analyze 的结论）。
+ */
+/** 训练数据集现状：真实样本数 / 下次训练会落到哪种模式 / 还差几条 */
+export interface SurveyDatasetStatus {
+  realSamples: number;
+  nextTrainingMode: "real_priority" | "hybrid_training" | "synthetic_only";
+  /** 再采集多少条真实问卷即可让下次训练切换到 nextTrainingMode */
+  needMore: number;
+  thresholds: { hybrid: number; priority: number };
+  labelSource: string;
+}
+export const getSurveyDatasetStatus = () => {
+  return http.request<Result<SurveyDatasetStatus>>(
+    "get",
+    "/api/health/survey/dataset-status"
+  );
+};
+
+/** Agent 工作流第三步（复评）结果，字段与 services/health-review-agent.ts 一致 */
+export interface HealthAgentReviewResult {
+  summary?: string;
+  completionRate?: number;
+  changes?: unknown[];
+  evaluation?: string;
+  nextSuggestions?: string[];
+}
+
+export interface HealthAgentWorkflow {
+  analysis: HealthAgentAnalysis;
+  plan: HealthAgentPlan;
+  /** 传递给下一步的上下文，可在界面上核对"Plan 确实收到了 Analyze 的结论" */
+  context: {
+    risk?: string;
+    reason?: string;
+    summary: string;
+    healthType: string;
+  };
+  /** 串行链路：analyze → plan → review，任一步降级都会在对应节点标出来 */
+  steps: Array<{ name: string; source: "ai" | "rule"; degraded: boolean }>;
+  /** 第三步复评结果（编排器返回，前端若不声明就会在展示时丢掉这一步） */
+  review?: HealthAgentReviewResult;
+}
+export const getHealthAgentWorkflow = (planId?: number) => {
+  return http.request<Result<HealthAgentWorkflow>>(
+    "post",
+    "/api/health/agent/workflow",
+    planId ? { data: { planId } } : undefined,
+    { timeout: LLM_TIMEOUT }
+  );
+};
+
 export const getHealthAgentReview = (planId: number) => {
   return http.request<Result<HealthAgentReview>>(
     "post",
     "/api/health/agent/review",
-    { data: { planId } }
+    { data: { planId } },
+    { timeout: LLM_TIMEOUT }
   );
 };

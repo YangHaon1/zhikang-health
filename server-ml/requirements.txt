@@ -1,6 +1,20 @@
-lightgbm>=4.0
+# ML 服务依赖
+#
+# ⚠️ 这里给的是「能跑起来的下界」，不代表仓库里提交的产物就是这些版本跑的。
+#    仓库里的 model/lgbm.txt、cluster-model/kmeans.pkl 是**特定版本产物**：
+#    kmeans.pkl 由 scikit-learn 1.7.2 训练，用别的大版本 unpickle 会出现
+#    InconsistentVersionWarning，重训也可能让 silhouette / 簇中心漂移。
+#    需要像素级复刻产物，请看 README「复现训练」一节给出的锁定版本清单。
+lightgbm>=4.3
 shap>=0.44
 fastapi>=0.110
 uvicorn>=0.29
 pydantic>=2.0
 numpy>=1.26
+# 聚类与数据集脚本直接依赖（缺了 clustering.py / train.py 直接 ImportError）
+# ⚠️ scikit-learn 必须锁上界：KMeans 在没有天然簇结构的数据上，不同版本的收敛
+#    结果会变。实测同一份合成数据（default_rng(7)）在 1.7.2 与 1.9.1 下重跑，
+#    簇命名会从「作息失衡型」变成「健康平衡型」—— 展示结论直接漂移。
+#    仓库提交的 kmeans.pkl 是 1.7.2 产物，请不要在 1.8+ 下重训覆盖它。
+scikit-learn>=1.7.2,<1.8
+pandas>=2.2

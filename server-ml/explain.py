@@ -14,7 +14,7 @@
 """
 from __future__ import annotations
 import numpy as np
-from feature import build_features, FEATURE_ORDER, FEATURE_LABELS
+from feature import build_features, FEATURE_ORDER, FEATURE_LABELS, is_missing
 from model import _load
 
 _explainer = None
@@ -77,14 +77,25 @@ def _fmt_value(v) -> str:
     return f"{f:.1f}"
 
 
-def _describe(label: str, raw_value, direction: str) -> str:
-    """面向用户的一句话说明。不做医学判断，只陈述模型归因结果。"""
-    shown = _fmt_value(raw_value)
+def _describe(label: str, raw_value, direction: str, imputed: bool = False) -> str:
+    """
+    面向用户的一句话说明。不做医学判断，只陈述模型归因结果。
+
+    ⚠️ 两个口径必须分开，否则会出现「条形图 1.03、文案说当前为 0」的自相矛盾：
+      · `value` / `contribution` 是 **SHAP 贡献值**（模型实际算出来的）
+      · 文案里的数值是 **用户填进去的原始值**
+    原始值缺失（或只可能是没填的 0）时，模型用的是训练集统计值，
+    这时绝不能照抄原始值误导用户，必须明说是"未填写、按平均水平参与计算"。
+    """
+    if imputed:
+        shown = "（该字段未填写，按训练集平均水平参与计算）"
+    else:
+        shown = f"当前为 {_fmt_value(raw_value)}"
     if direction == "raise_risk":
-        return f"{label}当前为 {shown}，是本次风险判定的主要推高因素"
+        return f"{label}{shown}，是本次风险判定的主要推高因素"
     if direction == "lower_risk":
-        return f"{label}当前为 {shown}，对本次风险判定起缓解作用"
-    return f"{label}当前为 {shown}，方向待定（模型解释降级，仅显示重要度）"
+        return f"{label}{shown}，对本次风险判定起缓解作用"
+    return f"{label}{shown}，方向待定（模型解释降级，仅显示重要度）"
 
 
 def explain(raw: dict, k: int = 3):
@@ -127,7 +138,12 @@ def explain(raw: dict, k: int = 3):
                 "contribution": round(val, 4),   # 兼容旧调用方
                 "predictedClass": pred,
                 "direction": direction,
-                "description": _describe(FEATURE_LABELS[key], raw.get(key), direction),
+                # 文案必须和实际喂进模型的特征同口径：缺失时说"未填写"，
+                # 不能拿原始 0 出来，否则条形图和说明互相打脸。
+                "description": _describe(
+                    FEATURE_LABELS[key], raw.get(key), direction,
+                    imputed=is_missing(raw, key)
+                ),
             })
     except Exception:
         # 回退：只有全局 gain 重要性，没有方向信息 —— 必须如实标注 unknown，
@@ -142,6 +158,9 @@ def explain(raw: dict, k: int = 3):
                 "value": round(float(imp[i]), 2),
                 "contribution": round(float(imp[i]), 2),
                 "direction": "unknown",
-                "description": _describe(FEATURE_LABELS[key], raw.get(key), "unknown"),
+                "description": _describe(
+                    FEATURE_LABELS[key], raw.get(key), "unknown",
+                    imputed=is_missing(raw, key)
+                ),
             })
     return factors

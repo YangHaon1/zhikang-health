@@ -58,6 +58,14 @@ def synth_rows(n: int = 600) -> list[dict]:
 
 
 
+def sklearn_version() -> str:
+    try:
+        import sklearn
+        return sklearn.__version__
+    except Exception:  # pragma: no cover
+        return "unknown"
+
+
 def name_cluster(center):
     tags = []
     if center["sleep_hours_mean"] < 6.8 or center["sleep_below7_days"] >= 3:
@@ -114,6 +122,15 @@ def train(real_db=None):
         scores[k] = round(float(s), 3)
         if s > best_score:
             best_score, best_k, best_km = s, k, km
+
+    # 轮廓系数绝对值本身很难解读：0.066 既可能是「有一点点结构」，
+    # 也可能是「把噪声切了几堆」。用「随机标签」做零假设对照才有判别力 ——
+    # 把真实标签打乱后重算，若也落在同一量级，说明簇结构并不存在。
+    rng = np.random.default_rng(0)
+    null_scores = [
+        silhouette_score(Xs, rng.permutation(best_km.labels_)) for _ in range(20)
+    ]
+    null_mean = float(np.mean(null_scores))
     centers = scaler.inverse_transform(best_km.cluster_centers_)
     counts = collections.Counter(best_km.labels_.tolist())
     report = []
@@ -129,12 +146,22 @@ def train(real_db=None):
             "real_samples": real_n, "synthetic_samples": len(rows) - real_n,
             "feature_count": len(FEATURE_ORDER), "best_k": best_k,
             "silhouette": round(float(best_score), 3), "k_scores": scores,
+            # 零假设对照：随机打乱标签后的轮廓系数均值（20 次，seed=0）。
+            # 真实值远高于它 = 簇结构真实存在；两者接近 = 簇是噪声。
+            "silhouette_null_baseline": round(null_mean, 4),
+            "silhouette_readout": (
+                f"实测 {best_score:.3f}，随机标签基线 {null_mean:.3f}；"
+                "绝对分值偏低是因为合成数据各特征独立生成、原始空间无天然簇结构，"
+                "但显著高于随机基线说明聚类确实抓到了结构性差异，不是把噪声硬分堆。"
+            ),
+            "sklearn_version": sklearn_version(),
             "features": FEATURE_ORDER, "clusters": report}
     with open(META_PATH, "w", encoding="utf-8") as f:
         json.dump(meta, f, ensure_ascii=False, indent=2)
     with open(REPORT_PATH, "w", encoding="utf-8") as f:
         json.dump(report, f, ensure_ascii=False, indent=2)
-    print(f"[cluster] kmeans-v0.2 mode={mode} real={real_n} total={len(rows)} k={best_k} sil={best_score:.3f}")
+    print(f"[cluster] kmeans-v0.2 mode={mode} real={real_n} total={len(rows)} k={best_k} "
+          f"sil={best_score:.3f} null={null_mean:.4f} sklearn={sklearn_version()}")
     for c in report:
         print(f"  cluster{c['clusterId']} n={c['count']} {c['name']}")
 

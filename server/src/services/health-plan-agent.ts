@@ -134,8 +134,9 @@ export async function generatePlan(opts: PlanInput): Promise<PlanResult> {
       const obj = JSON.parse(m[0]) as PlanResult;
       if (obj.tasks?.length) return { ...obj, source: "ai" };
     }
-  } catch {
-    /* fallthrough */
+  } catch (err) {
+    // 同上：降级成规则方案时留痕，别让「解析失败」看起来像「AI 正常返回」
+    console.warn("[health-plan-agent] LLM 方案解析失败，降级为规则模板:", err);
   }
   return rulePlan();
 }

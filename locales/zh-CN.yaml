@@ -89,6 +89,7 @@ menus:
   healthAudit: 审计日志
   healthAiProfile: AI健康画像
   healthRisk: 风险预测
+  healthSurvey: 健康调研
   healthCompanion: AI健康陪伴
 status:
   pureLoad: 加载中...

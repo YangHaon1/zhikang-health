@@ -31,6 +31,11 @@ router.get("/health/cluster-stats", authMiddleware, (_req, res) => {
       syntheticSamples: meta.synthetic_samples ?? 0,
       clusterCount: meta.best_k ?? 0,
       silhouette: meta.silhouette ?? 0,
+      // 轮廓系数零假设对照：随机打乱标签后的均值。前端据此解释
+      // 「0.066 偏低但不是瞎分」——真实簇结构与噪声必须能区分开。
+      silhouetteNullBaseline: meta.silhouette_null_baseline ?? null,
+      kScores: meta.k_scores ?? null,
+      sklearnVersion: meta.sklearn_version ?? null,
       clusters: meta.clusters ?? []
     }
   });

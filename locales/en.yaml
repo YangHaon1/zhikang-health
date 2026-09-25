@@ -89,6 +89,7 @@ menus:
   healthAudit: Audit Log
   healthAiProfile: AI Health Profile
   healthRisk: Risk Forecast
+  healthSurvey: Health Survey
   healthCompanion: AI Companions
 status:
   pureLoad: Loading...
