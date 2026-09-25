@@ -7,7 +7,7 @@ import os
 import pickle
 import json
 import numpy as np
-from feature import FEATURE_ORDER, FEATURE_DEFAULTS
+from feature import build_features
 
 PKL_PATH = os.path.join(os.path.dirname(__file__), "cluster-model", "kmeans.pkl")
 META_PATH = os.path.join(os.path.dirname(__file__), "cluster-model", "metadata.json")
@@ -31,14 +31,12 @@ def cluster_predict(raw: dict) -> dict:
     m = _load()
     if m is None:
         return {"available": False}
-    # 与 model.predict 同口径：缺失值用训练集统计值填充，不能填 0
-    # （0 = 就寝 0 点 / BMI 0 / 睡眠 0 小时，在训练分布里是极端值，会把新用户判成最差簇）
-    vec = [
-        [
-            float(raw.get(k) if raw.get(k) not in (None, "") else FEATURE_DEFAULTS[k])
-            for k in FEATURE_ORDER
-        ]
-    ]
+    # 与 model.predict 完全同口径：直接复用 feature.build_features。
+    # ⚠️ 旧实现这里自己写了一遍「只判 None / 空串」的判定，漏掉了
+    #    「0 只可能是没填」的字段（sleep_quality_avg / stress_avg / bmi 等），
+    #    于是数据库把"未填写"存成 0 时，风险模型填统计值、聚类模型却吃 0，
+    #    同一个用户会被两个模型按两套输入画像 —— 行为画像与风险等级自相矛盾。
+    vec = [build_features(raw)]
     X = m["scaler"].transform(vec)
     cid = int(m["kmeans"].predict(X)[0])
     dists = m["kmeans"].transform(X)[0]

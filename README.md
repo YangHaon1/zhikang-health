@@ -1,4 +1,4 @@
-﻿# 智康健康 · Zhikang Health
+# 智康健康 · Zhikang Health
 
 > 基于人工智能的个人健康管理平台：记录健康数据、智能分析趋势、AI 健康助手，提供可解释的风险提示与个性化建议。
 
@@ -145,7 +145,8 @@ pnpm dev:all     # 并行启动 ML(8000) + 后端(3000) + 前端(8848)
 
 ```bash
 # 1) Python ML 服务（端口 8000，可选但推荐）
-pip install -r server-ml/requirements.txt
+python -m venv server-ml/.venv
+server-ml/.venv/Scripts/python.exe -m pip install -r server-ml/requirements.txt
 pnpm dev:ml
 
 # 2) 后端（端口 3000）
@@ -154,6 +155,12 @@ cd server && pnpm dev
 # 3) 前端（端口 8848）
 pnpm dev
 ```
+
+> `pnpm dev:ml` 调用的是 `server-ml/.venv` 里的解释器（Windows 路径）。
+> 虚拟机/容器里请按各自平台改用 `.venv/bin/python`，或直接
+> `python server-ml/main.py`。
+> 若 `.venv` 不存在该命令会直接失败——这比"静默用错解释器"更好排查，
+> 且不影响后端与前端的启动。
 
 > ⚠️ **不启动 ML 服务时系统仍可完整运行**，但风险预测会自动降级为规则引擎
 > （响应 `source` 字段为 `rule`，前端会如实标注"规则分析结果"）。
@@ -210,6 +217,9 @@ python clustering.py --real-db ../server/data/zhikang.db
 - **前后端分离**：Vue3 SPA + Express REST API + 独立 Python ML 服务
 - **可解释 AI**：规则引擎负责打分分级，LLM 负责自然语言表达，二者解耦
 - **单样本归因**：SHAP 输出 Top-3 影响因素及方向，每个结论可回溯到指标 / 阈值 / 规则版本
+- **特征一致性治理**：15 个模型特征只在 `server-ml/feature-spec.json` 定义一次，
+  Python 与 Node 读同一份；线上分布对训练分布的漂移用 PSI 监控
+  （`GET /api/health/ml-drift`，看板可见）
 - **AI 健康上下文**：向大模型注入用户结构化健康摘要，回答基于真实数据而非通用话术
 - **全链路降级**：ML / LLM / SHAP 三层降级，任一外部依赖故障都不中断主流程
 - **数据驱动**：统一记录、趋势分析、目标追踪形成健康管理闭环
@@ -231,6 +241,21 @@ python clustering.py --real-db ../server/data/zhikang.db
 4. **RAG 为轻量关键词检索**：本地知识库规模有限，未使用向量检索，接口已预留可平滑替换。
 5. **三段式 AI 辅助尚未形成自动闭环**：analyze / plan / review 目前需要显式传递上下文，
    尚不具备工具调用与自主规划能力。
+6. **漂移监控的样本量很小**：PSI 基线来自固定的合成训练集，线上样本只有演示账号的
+   近 7 天记录，接口会如实标注 `sufficient: false`。**PSI 只反映输入分布，不代表模型精度**。
+
+---
+
+## 架构决策记录（ADR）
+
+关键设计取舍与被否方案记录在 [`docs/adr/`](docs/adr/README.md)：
+
+| 编号                                           | 决策                                          |
+| ---------------------------------------------- | --------------------------------------------- |
+| [0001](docs/adr/0001-ml-model-choice.md)       | 风险预测用 LightGBM，LLM 只做表达             |
+| [0002](docs/adr/0002-rule-engine-vs-llm.md)    | 规则引擎与 LLM 解耦，安全结论只来自确定性代码 |
+| [0003](docs/adr/0003-privacy-authorization.md) | 隐私授权独立建表 + 小样本强制隐藏             |
+| [0004](docs/adr/0004-feature-single-source.md) | 特征定义单一来源（`feature-spec.json`）       |
 
 ---
 

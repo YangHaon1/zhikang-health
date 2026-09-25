@@ -29,6 +29,11 @@ __pycache__/
 *.pyd
 .pytest_cache/
 *.log
+# 虚拟环境一律不入库：内含解释器绝对路径，换机器即失效，体积远大于收益
+# （历史遗留：曾创建 .venv17 / .venv2 用于比对 sklearn 版本，已清理）
+.venv/
+.venv*/
+venv/
 
 # 真实问卷导出的训练数据集（由 /api/health/survey/export-dataset 生成，含用户作答，不入库）
 server-ml/real_survey.db

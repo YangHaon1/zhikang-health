@@ -17,10 +17,15 @@
 
 ```bash
 pip install -r requirements.txt
-python train.py      # 生成 model/lgbm.txt（冷启动演示模型）
+python train.py      # 生成 model/lgbm.txt（冷启动演示模型）+ 自动刷新漂移基线
 python clustering.py # 生成 cluster-model/kmeans.pkl（ lifestyle 行为聚类）
 python main.py       # 启动 http://127.0.0.1:8000
 ```
+
+> 只装依赖、不重训时，也可以用本机任意已装好 lightgbm 的 Python 解释器直接启动：
+> `python server-ml/main.py`（本项目 `.venv*` 目录不入库，克隆后请自建环境）。
+> `package.json` 的 `dev:ml` 之前指向某台机器的绝对 pyenv 路径，别人克隆后必然失败 ——
+> 现在改为 `.venv/Scripts/python.exe`（见根 `README.md`）。
 
 ### 复现训练（锁定版本）
 
@@ -94,6 +99,45 @@ python clustering.py  --real-db server-ml/real_survey.db
 > 在换成量表（如 PSSQ / GHQ-12）人工标注之前，模型结论依然只是**生活方式风险提示**。
 > 这一点在答辩时应主动说明，不要声称"已用真实医疗标注训练"。
 
+## 特征定义：只有一份（P1-1）
+
+15 个特征的名字、顺序、中文标签、缺失默认值、以及"哪些字段的 0 是真值"，
+**只在 `feature-spec.json` 定义一次**。Python（`feature.py`）与 Node
+（`server/src/services/featureSource.ts`）读同一个文件：
+
+```bash
+# 改特征 → 只改这一处；改完 Python 侧会在 import 时自检字段完整性
+# （缺字段直接抛错，不会静默用错特征）
+python -c "import feature; print(len(feature.FEATURE_ORDER))"
+```
+
+历史漂移（已修）：`dataset._default_row` 的 `grade_code` 曾与 `feature.FEATURE_DEFAULTS`
+不一致；聚类侧曾自己写一遍缺失判定、漏掉"0 只可能是没填"。
+两组回归测试见 `server/shared/__tests__/p1-feature-spec.test.ts`。
+
+> ⚠️ `feature_defaults` 的出处写在 spec 的 `defaults_provenance` 里，
+> **不要**再声称它是中位数：实测该数据集真中位数是 `sleep_below7_days=2` /
+> `exercise_days=2` / `stress_high_days=1`，而默认值是 3 / 3 / 1.5（生成均值）。
+> 数值在分布内、不影响使用，但出处必须写对。
+
+## 漂移监控：PSI 基线怎么来的（P1-1）
+
+```bash
+python feature_baseline.py   # 生成/刷新 model/feature-baseline.json
+python feature_drift.py      # 自检：同源抽样 PSI≈0，人为漂移 → significant
+```
+
+- 基线 = `train.make_synth()`（与 `lgbm.txt` 同一生成器、同一 seed/samples）的
+  每特征分箱边界 + 占比 + 参考统计量。**不加载、不重训模型**，也不改任何模型产物。
+- `train.py` 训练完会自动刷新基线，避免"模型换了基线没换"。
+- Node 侧 `server-ml` 之外的消费者：`GET /api/health/ml-drift`（adminOnly），
+  把全体启用账号近 7 天的聚合特征视为线上分布，逐特征算 PSI；
+  看板「群体健康看板」页展示。
+- 判定阈值（两侧共用）：`<0.10` 稳定 / `0.10~0.25` 轻微 / `≥0.25` 显著。
+
+> ⚠️ PSI 是**输入分布**指标，不是准确率。PSI 低不代表预测正确，PSI 高不代表预测错误。
+> 接口响应里带 `disclaimer`，前端原样展示。
+
 ## API
 
 ### POST /predict
@@ -132,8 +176,12 @@ python clustering.py  --real-db server-ml/real_survey.db
 
 ## 文件
 
-- `feature.py`：特征向量 + 数据质量
-- `train.py`：合成数据 + 规则标签训练
+- `feature-spec.json`：**特征定义唯一来源**（顺序/标签/单位/默认值/zero_valid）
+- `feature.py`：读 spec → 特征向量 + 缺失判定 + 数据质量
+- `feature_baseline.py`：生成漂移基线 `model/feature-baseline.json`
+- `feature_drift.py`：PSI 计算与零假设自检（与 TS 侧同规则）
+- `train.py`：合成数据 + 规则标签训练（训练后自动刷新基线）
 - `model.py`：加载/预测
 - `explain.py`：SHAP Top3（失败自动回退特征重要性）
+- `clustering.py` / `cluster_predict.py`：KMeans 行为画像
 - `main.py`：FastAPI 接口

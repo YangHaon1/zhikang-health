@@ -8,30 +8,21 @@ from __future__ import annotations
 import os
 import sqlite3
 from typing import Tuple, List
-from feature import FEATURE_ORDER
+from feature import FEATURE_ORDER, FEATURE_DEFAULTS
 
 LABEL_MAP = {"low": 0, "medium": 1, "high": 2}
 
 
 def _default_row() -> dict:
-    """特征缺失时的安全默认值（群体中位）。"""
-    return {
-        "sleep_hours_mean": 7.2,
-        "sleep_below7_days": 3,
-        "sleep_quality_avg": 2.2,
-        "exercise_min_sum": 120.0,
-        "exercise_days": 3,
-        "stress_avg": 1.9,
-        "stress_high_days": 1.5,
-        "diet_reg_ratio": 0.6,
-        "mood_avg": 2.1,
-        "study_hours": 7.0,
-        "sedentary_hours": 8.0,
-        "bedtime_hour": 23.0,
-        "is_off_campus": 0,
-        "grade_code": 1,
-        "bmi": 20.5,
-    }
+    """
+    特征缺失时的安全默认值。
+
+    ⚠️ 不再在本文件硬编码一份：旧版本这里写 `grade_code: 1`，
+    而 feature.FEATURE_DEFAULTS 写 `grade_code: 3`，两处都自称「同口径」实际不一致，
+    真实问卷行（survey_row_to_features 从不覆盖 grade_code）究竟用哪个取决于走哪条路径。
+    现在只从 feature-spec.json 取唯一一份，杜绝同一语义两个默认值。
+    """
+    return dict(FEATURE_DEFAULTS)
 
 
 def survey_row_to_features(r: sqlite3.Row) -> dict:
