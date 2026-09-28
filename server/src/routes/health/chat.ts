@@ -45,11 +45,17 @@ interface ChatRow {
   create_time: string | null;
 }
 
-/** 落一条对话记录（role: 'user' | 'assistant'） */
-const insertChat = db.prepare(
-  `INSERT INTO chat_history (user_id, role, content, create_time)
-   VALUES (?, ?, ?, datetime('now','localtime'))`
-);
+/** 落一条对话记录（role: 'user' | 'assistant'）。惰性 prepare，避免 ESM 加载早于 initDb。 */
+let _insertChat: { run: (...args: any[]) => any } | null = null;
+function insertChatRun(userId: number, role: string, content: string) {
+  if (!_insertChat) {
+    _insertChat = db.prepare(
+      `INSERT INTO chat_history (user_id, role, content, create_time)
+       VALUES (?, ?, ?, datetime('now','localtime'))`
+    );
+  }
+  _insertChat!.run(userId, role, content);
+}
 
 /** 从入参里取本轮提问：兼容 deep-chat 的 {messages:[{role,text/content}]} 与直接传 {question}/{text} */
 function extractQuestion(body: Record<string, unknown>): string {
@@ -173,8 +179,8 @@ router.post("/health/chat", authMiddleware, async (req, res) => {
   if (emergency) {
     const answer = emergencyCardToText(emergency);
     db.transaction(() => {
-      insertChat.run(userId, "user", question);
-      insertChat.run(userId, "assistant", answer);
+      insertChatRun(userId, "user", question);
+      insertChatRun(userId, "assistant", answer);
     })();
     res.json({ code: 0, message: "操作成功", data: answer });
     return;
@@ -212,8 +218,8 @@ router.post("/health/chat", authMiddleware, async (req, res) => {
 
   // 用户提问与回答成对落库（同一事务，避免只落了半轮）
   db.transaction(() => {
-    insertChat.run(userId, "user", question);
-    insertChat.run(userId, "assistant", answer);
+    insertChatRun(userId, "user", question);
+    insertChatRun(userId, "assistant", answer);
   })();
 
   res.json({ code: 0, message: "操作成功", data: answer });
