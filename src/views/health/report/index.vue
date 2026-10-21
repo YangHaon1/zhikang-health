@@ -379,7 +379,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div>
+  <div class="health-cockpit">
     <!-- 查询工具栏（打印时隐藏） -->
     <el-card shadow="never" class="mb-4">
       <div class="flex items-center flex-wrap gap-3">
@@ -895,11 +895,13 @@ onBeforeUnmount(() => {
   background:
     radial-gradient(
       circle at 85% 15%,
-      rgb(255 255 255 / 22%),
+      rgb(167 139 250 / 28%),
       transparent 12rem
     ),
-    linear-gradient(135deg, #075e45, #16a34a 60%, #6366f1);
+    linear-gradient(135deg, #0f766e, #4f46e5 60%, #6366f1);
+  border: 1px solid rgb(148 184 255 / 18%);
   border-radius: 20px;
+  box-shadow: 0 0 40px rgb(99 102 241 / 20%);
 }
 
 .cover-kicker {
@@ -920,11 +922,14 @@ onBeforeUnmount(() => {
 
 .cover-score {
   margin: 10px 0 4px;
+  font-family: "DIN Alternate", "JetBrains Mono", ui-monospace, monospace;
   font-size: 64px;
   font-weight: 800;
+  font-variant-numeric: tabular-nums;
   line-height: 1;
   color: #fff;
   letter-spacing: -0.03em;
+  text-shadow: 0 0 24px rgb(34 211 238 / 40%);
 }
 
 .cover-level {
@@ -942,7 +947,7 @@ onBeforeUnmount(() => {
   margin: 0 0 10px;
   font-size: 13px;
   font-weight: 700;
-  color: #16a34a;
+  color: var(--hc-level-low, #16a34a);
   letter-spacing: 0.05em;
 }
 
@@ -953,15 +958,17 @@ onBeforeUnmount(() => {
   gap: 10px 20px;
   padding: 12px 16px;
   margin-bottom: 8px;
-  background: #f5f6ff;
+  background: var(--hc-card, #f5f6ff);
+  border: 1px solid var(--hc-border, transparent);
   border-radius: 12px;
+  backdrop-filter: blur(12px);
 }
 
 .report-note {
   margin: 0 0 22px;
   font-size: 12px;
   line-height: 1.6;
-  color: #9ca3af;
+  color: var(--hc-text-secondary, #9ca3af);
 }
 
 .ai-progress-item {
@@ -969,7 +976,7 @@ onBeforeUnmount(() => {
   gap: 6px;
   align-items: center;
   font-size: 13px;
-  color: #9ca3af;
+  color: var(--hc-text-secondary, #9ca3af);
 
   .ai-check {
     display: inline-flex;
@@ -980,16 +987,17 @@ onBeforeUnmount(() => {
     font-size: 12px;
     font-weight: 700;
     color: #cbd5e1;
-    background: #e5e7eb;
+    background: var(--hc-bg-raise, #e5e7eb);
     border-radius: 50%;
   }
 
   &.done {
-    color: #4f46e5;
+    color: var(--hc-violet, #4f46e5);
 
     .ai-check {
       color: #fff;
       background: linear-gradient(135deg, #6366f1, #8b5cf6);
+      box-shadow: 0 0 8px rgb(167 139 250 / 50%);
     }
   }
 }

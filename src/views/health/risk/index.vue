@@ -2,6 +2,7 @@
 /** M4 健康风险预测页 + V2.0 P1-1C：ML 亚健康 AI 预测展示 */
 import { ref, computed, onMounted } from "vue";
 import { useRouter } from "vue-router";
+import { useDark } from "@pureadmin/utils";
 import {
   getAiProfile,
   getHealthRisk,
@@ -69,16 +70,30 @@ onMounted(async () => {
   }
 });
 
+const { isDark } = useDark();
+
 // unknown / insufficient 为后端新增状态（数据不足时不做预测），必须有兜底
-const LEVEL_META: Record<string, { text: string; color: string }> = {
-  low: { text: "低风险倾向", color: "#16a34a" },
-  medium: { text: "中等风险倾向", color: "#f59e0b" },
-  high: { text: "高风险倾向", color: "#dc2626" },
-  unknown: { text: "暂无法评估", color: "#64748b" }
-};
+const LEVEL_META = computed<Record<string, { text: string; color: string }>>(
+  () =>
+    isDark.value
+      ? {
+          low: { text: "低风险倾向", color: "#34d399" },
+          medium: { text: "中等风险倾向", color: "#fbbf24" },
+          high: { text: "高风险倾向", color: "#f87171" },
+          unknown: { text: "暂无法评估", color: "#94a3b8" }
+        }
+      : {
+          low: { text: "低风险倾向", color: "#16a34a" },
+          medium: { text: "中等风险倾向", color: "#f59e0b" },
+          high: { text: "高风险倾向", color: "#dc2626" },
+          unknown: { text: "暂无法评估", color: "#64748b" }
+        }
+);
 
 const level = computed(
-  () => LEVEL_META[risk.value?.riskLevel ?? "unknown"] ?? LEVEL_META.unknown
+  () =>
+    LEVEL_META.value[risk.value?.riskLevel ?? "unknown"] ??
+    LEVEL_META.value.unknown
 );
 /** 数据不足：后端返回 source=insufficient，此时不展示任何风险结论 */
 const insufficient = computed(() => risk.value?.source === "insufficient");
@@ -131,7 +146,7 @@ async function adopt() {
 </script>
 
 <template>
-  <div v-loading="loading" class="risk-page">
+  <div v-loading="loading" class="risk-page health-cockpit">
     <!-- V2.0：AI 预测结果卡 -->
     <section class="risk-hero">
       <p class="risk-kicker">
@@ -397,7 +412,9 @@ async function adopt() {
   padding: 28px;
   color: #fff;
   background: linear-gradient(135deg, #0f766e, #4f46e5);
+  border: 1px solid rgb(148 184 255 / 18%);
   border-radius: 20px;
+  box-shadow: 0 0 32px rgb(79 70 229 / 20%);
 
   h2 {
     margin: 6px 0;
@@ -424,9 +441,10 @@ async function adopt() {
 
 .ml-card {
   padding: 24px;
-  background: #fff;
-  border: 1px solid #e6f0ea;
+  background: var(--hc-card, #fff);
+  border: 1px solid var(--hc-border, #e6f0ea);
   border-radius: 16px;
+  backdrop-filter: blur(12px);
 }
 
 .ml-level {
@@ -437,11 +455,12 @@ async function adopt() {
 .ml-prob {
   margin-top: 8px;
   font-size: 15px;
-  color: #4b5563;
+  color: var(--hc-text-secondary, #4b5563);
 
   b {
+    font-family: "DIN Alternate", "JetBrains Mono", ui-monospace, monospace;
     font-size: 22px;
-    color: #17382c;
+    color: var(--hc-text-primary, #17382c);
   }
 }
 
@@ -454,15 +473,16 @@ async function adopt() {
 
 .factor-card {
   padding: 20px 24px;
-  background: #fff;
-  border: 1px solid #e6f0ea;
+  background: var(--hc-card, #fff);
+  border: 1px solid var(--hc-border, #e6f0ea);
   border-radius: 16px;
+  backdrop-filter: blur(12px);
 }
 
 .factor-title {
   margin: 0 0 12px;
   font-size: 15px;
-  color: #17382c;
+  color: var(--hc-text-primary, #17382c);
 }
 
 .bar-row {
@@ -475,13 +495,13 @@ async function adopt() {
 }
 
 .bar-label {
-  color: #374151;
+  color: var(--hc-text-primary, #374151);
 }
 
 .bar-track {
   height: 10px;
   overflow: hidden;
-  background: #f3f4f6;
+  background: var(--hc-bg-raise, #f3f4f6);
   border-radius: 999px;
 }
 
@@ -493,7 +513,7 @@ async function adopt() {
 
 .bar-dir {
   font-size: 12px;
-  color: #6b7280;
+  color: var(--hc-text-secondary, #6b7280);
   text-align: right;
 }
 
@@ -503,20 +523,20 @@ async function adopt() {
   margin: -2px 0 0;
   font-size: 12px;
   line-height: 1.6;
-  color: #6b7280;
+  color: var(--hc-text-secondary, #6b7280);
 }
 
 .factor-note {
   margin: 10px 0 0;
   font-size: 12px;
   line-height: 1.6;
-  color: #9ca3af;
+  color: var(--hc-text-secondary, #9ca3af);
 }
 
 .agent-chain {
   padding: 16px 20px;
-  background: #fff;
-  border: 1px dashed #c7d2fe;
+  background: var(--hc-card, #fff);
+  border: 1px dashed var(--hc-border-strong, #c7d2fe);
   border-radius: 14px;
 }
 
@@ -524,7 +544,7 @@ async function adopt() {
   margin: 0 0 10px;
   font-size: 12px;
   font-weight: 600;
-  color: #6366f1;
+  color: var(--hc-violet, #6366f1);
 }
 
 .chain-row {
@@ -540,24 +560,26 @@ async function adopt() {
   align-items: baseline;
   padding: 6px 12px;
   font-size: 12px;
-  background: #eef2ff;
+  background: rgb(99 102 241 / 12%);
+  border: 1px solid rgb(167 139 250 / 25%);
   border-radius: 999px;
 
   b {
     font-weight: 700;
-    color: #4338ca;
+    color: var(--hc-violet, #4338ca);
   }
 
   em {
     font-style: normal;
-    color: #4b5563;
+    color: var(--hc-text-secondary, #4b5563);
   }
 
   &.degraded {
-    background: #fef3c7;
+    background: rgb(251 191 36 / 12%);
+    border-color: rgb(251 191 36 / 30%);
 
     b {
-      color: #b45309;
+      color: var(--hc-level-mid, #b45309);
     }
   }
 }
@@ -566,18 +588,18 @@ async function adopt() {
   margin: 10px 0 0;
   font-size: 12px;
   line-height: 1.7;
-  color: #6b7280;
+  color: var(--hc-text-secondary, #6b7280);
 }
 
 .chain-review {
   padding: 10px 12px;
   margin-top: 10px;
-  background: #f8fafc;
+  background: var(--hc-bg-raise, #f8fafc);
   border-radius: 8px;
 
   .chain-kicker {
     margin-bottom: 6px;
-    color: #0f766e;
+    color: var(--hc-primary, #0f766e);
   }
 
   .chain-note {
@@ -590,7 +612,7 @@ async function adopt() {
   margin: 6px 0 0;
   font-size: 12px;
   line-height: 1.8;
-  color: #6b7280;
+  color: var(--hc-text-secondary, #6b7280);
 }
 
 .coach-entry {
@@ -599,9 +621,11 @@ async function adopt() {
   align-items: center;
   padding: 16px 20px;
   font-weight: 600;
-  color: #4f46e5;
+  color: var(--hc-violet, #4f46e5);
   cursor: pointer;
-  background: linear-gradient(120deg, #eef2ff, #f5f3ff);
+  background: var(--hc-card, linear-gradient(120deg, #eef2ff, #f5f3ff));
+  border: 1px solid var(--hc-border, transparent);
+  border-left: 3px solid var(--hc-violet, #4f46e5);
   border-radius: 14px;
   transition: transform 0.18s ease;
 
@@ -616,32 +640,34 @@ async function adopt() {
 
 .coach-card {
   padding: 24px;
-  background: linear-gradient(135deg, #eef2ff, #f0fdf4);
+  background: var(--hc-card, linear-gradient(135deg, #eef2ff, #f0fdf4));
+  border: 1px solid var(--hc-border, transparent);
   border-radius: 16px;
+  backdrop-filter: blur(12px);
 }
 
 .coach-desc {
   margin: 6px 0 14px;
   font-size: 13px;
-  color: #6b7280;
+  color: var(--hc-text-secondary, #6b7280);
 }
 
 .plan-box {
   padding: 18px;
   margin-top: 18px;
-  background: #fff;
+  background: var(--hc-bg-raise, #fff);
   border-radius: 12px;
 }
 
 .plan-title {
   font-size: 17px;
   font-weight: 700;
-  color: #17382c;
+  color: var(--hc-text-primary, #17382c);
 }
 
 .plan-summary {
   font-size: 13px;
-  color: #4b5563;
+  color: var(--hc-text-secondary, #4b5563);
 }
 
 .plan-goal {
@@ -654,13 +680,13 @@ async function adopt() {
 
 .plan-check {
   font-size: 18px;
-  color: #16a34a;
+  color: var(--hc-level-low, #16a34a);
 }
 
 .plan-action {
   margin-top: 2px;
   font-size: 12px;
-  color: #6b7280;
+  color: var(--hc-text-secondary, #6b7280);
 }
 
 .plan-actions {
@@ -669,9 +695,10 @@ async function adopt() {
 
 .type-card {
   padding: 24px;
-  background: linear-gradient(135deg, #fefce8, #f0fdf4);
-  border: 1px solid #fde68a;
+  background: var(--hc-card, linear-gradient(135deg, #fefce8, #f0fdf4));
+  border: 1px solid var(--hc-border, #fde68a);
   border-radius: 16px;
+  backdrop-filter: blur(12px);
 }
 
 .type-head {
@@ -682,21 +709,22 @@ async function adopt() {
 
 .type-kicker {
   font-size: 12px;
-  color: #92400e;
+  color: var(--hc-level-mid, #92400e);
 }
 
 .type-badge {
   padding: 4px 12px;
   font-weight: 700;
   color: #fff;
-  background: linear-gradient(135deg, #f59e0b, #16a34a);
+  background: linear-gradient(135deg, #fbbf24, #34d399);
   border-radius: 999px;
+  box-shadow: 0 0 12px rgb(251 191 36 / 30%);
 }
 
 .type-desc {
   margin: 10px 0 0;
   font-size: 14px;
-  color: #4b5563;
+  color: var(--hc-text-secondary, #4b5563);
 }
 
 .type-meta {
@@ -709,8 +737,8 @@ async function adopt() {
 .type-factor {
   padding: 3px 10px;
   font-size: 12px;
-  color: #92400e;
-  background: #fffbeb;
+  color: var(--hc-level-mid, #92400e);
+  background: rgb(251 191 36 / 10%);
   border-radius: 999px;
 }
 
@@ -718,7 +746,7 @@ async function adopt() {
   margin-top: 12px;
   font-size: 13px;
   line-height: 1.9;
-  color: #17382c;
+  color: var(--hc-text-primary, #17382c);
 }
 
 .src-tag {
@@ -727,8 +755,8 @@ async function adopt() {
   font-size: 11px;
   font-weight: 600;
   vertical-align: middle;
-  color: #4f46e5;
-  background: #eef2ff;
+  color: var(--hc-violet, #4f46e5);
+  background: rgb(99 102 241 / 12%);
   border-radius: 999px;
 }
 </style>
