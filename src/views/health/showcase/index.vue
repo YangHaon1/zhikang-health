@@ -70,7 +70,7 @@ function scrollToCaps() {
 </script>
 
 <template>
-  <div v-loading="loading" class="showcase-page">
+  <div v-loading="loading" class="showcase-page health-cockpit">
     <!-- 一、产品 Hero -->
     <section class="showcase-hero">
       <p class="hero-kicker">AI Health OS</p>
@@ -356,16 +356,18 @@ function scrollToCaps() {
 .stat-card {
   padding: 24px;
   text-align: center;
-  background: #fff;
-  border: 1px solid #e6f0ea;
+  background: var(--hc-card, #fff);
+  border: 1px solid var(--hc-border, #e6f0ea);
   border-radius: 20px;
+  backdrop-filter: blur(12px);
 }
 
 .stat-num {
+  font-family: "DIN Alternate", "JetBrains Mono", ui-monospace, monospace;
   font-size: 44px;
   font-weight: 800;
   line-height: 1;
-  color: #0b3b2c;
+  color: var(--hc-text-primary, #0b3b2c);
   letter-spacing: -0.03em;
 }
 
@@ -373,13 +375,13 @@ function scrollToCaps() {
   margin-top: 8px;
   font-size: 14px;
   font-weight: 700;
-  color: #17382c;
+  color: var(--hc-text-primary, #17382c);
 }
 
 .stat-sub {
   margin-top: 4px;
   font-size: 12px;
-  color: #8aa094;
+  color: var(--hc-text-secondary, #8aa094);
 }
 
 .showcase-block {
@@ -390,7 +392,7 @@ function scrollToCaps() {
   margin: 0 0 16px;
   font-size: 18px;
   font-weight: 700;
-  color: #17382c;
+  color: var(--hc-text-primary, #17382c);
 }
 
 .cap-grid {
@@ -402,29 +404,32 @@ function scrollToCaps() {
 .cap-card {
   padding: 22px;
   cursor: pointer;
-  background: #fff;
-  border: 1px solid #e6f0ea;
+  background: var(--hc-card, #fff);
+  border: 1px solid var(--hc-border, #e6f0ea);
   border-radius: 18px;
+  backdrop-filter: blur(12px);
   transition:
     transform 0.18s ease,
-    box-shadow 0.18s ease;
+    box-shadow 0.18s ease,
+    border-color 0.18s ease;
 
   &:hover {
-    box-shadow: 0 14px 30px color-mix(in srgb, var(--c) 16%, transparent);
+    border-color: var(--hc-border-strong, transparent);
+    box-shadow: 0 14px 30px color-mix(in srgb, var(--c) 20%, transparent);
     transform: translateY(-4px);
   }
 
   h3 {
     margin: 12px 0 6px;
     font-size: 15px;
-    color: #17382c;
+    color: var(--hc-text-primary, #17382c);
   }
 
   p {
     margin: 0 0 12px;
     font-size: 12px;
     line-height: 1.6;
-    color: #6b7f74;
+    color: var(--hc-text-secondary, #6b7f74);
   }
 
   .cap-go {
@@ -456,7 +461,8 @@ function scrollToCaps() {
   align-items: center;
   justify-content: center;
   padding: 28px;
-  background: linear-gradient(135deg, #f8fafc, #eef2ff);
+  background: var(--hc-card, linear-gradient(135deg, #f8fafc, #eef2ff));
+  border: 1px solid var(--hc-border, transparent);
   border-radius: 20px;
 }
 
@@ -464,9 +470,9 @@ function scrollToCaps() {
   padding: 12px 22px;
   font-size: 14px;
   font-weight: 700;
-  color: #1e1b4b;
-  background: #fff;
-  border: 1px solid #e0e7ff;
+  color: var(--hc-text-primary, #1e1b4b);
+  background: var(--hc-bg-raise, #fff);
+  border: 1px solid var(--hc-border, #e0e7ff);
   border-radius: 999px;
   box-shadow: 0 4px 12px rgb(79 70 229 / 8%);
 }

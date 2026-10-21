@@ -91,7 +91,7 @@ onMounted(loadProfile);
 </script>
 
 <template>
-  <div v-loading="loading" class="profile-guide">
+  <div v-loading="loading" class="profile-guide health-cockpit">
     <ProfileStepIndicator
       v-if="step < 4"
       :step="step"
