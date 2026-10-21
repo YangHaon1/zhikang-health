@@ -1,5 +1,5 @@
 <template>
-  <div class="plans-page">
+  <div class="plans-page health-cockpit">
     <!-- 页头：标题 + 操作 -->
     <el-card shadow="never" class="plans-header">
       <div class="header-row">
@@ -835,7 +835,7 @@ onMounted(() => {
 .plan-meta {
   margin-top: 8px;
   font-size: 12px;
-  color: #075e45;
+  color: var(--hc-text-primary, #075e45);
 }
 
 .plan-actions {
@@ -846,8 +846,8 @@ onMounted(() => {
 
 .detail-info {
   padding: 12px;
-  background: #f7faf8;
-  border: 1px solid #e6f0ea;
+  background: var(--hc-card, #f7faf8);
+  border: 1px solid var(--hc-border, #e6f0ea);
   border-radius: 10px;
 }
 
@@ -857,10 +857,10 @@ onMounted(() => {
   align-items: center;
   justify-content: space-between;
   padding: 12px 10px;
-  border-bottom: 1px dashed #eef4f0;
+  border-bottom: 1px dashed var(--hc-border, #eef4f0);
 
   &.done {
-    background: #f6fdf9;
+    background: var(--hc-card, #f6fdf9);
   }
 }
 
@@ -990,15 +990,15 @@ onMounted(() => {
 .notice-item {
   padding: 10px 12px;
   margin-bottom: 8px;
-  background: #f6fdf9;
-  border: 1px solid #d8efe3;
+  background: var(--hc-card, #f6fdf9);
+  border: 1px solid var(--hc-border, #d8efe3);
   border-radius: 10px;
 }
 
 .notice-title {
   font-size: 13px;
   font-weight: 600;
-  color: #075e45;
+  color: var(--hc-text-primary, #075e45);
 }
 
 .reminder-foot {

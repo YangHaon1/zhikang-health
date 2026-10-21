@@ -239,7 +239,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <div>
+  <div class="health-cockpit">
     <el-card shadow="never">
       <template #header>
         <div class="flex-bc">

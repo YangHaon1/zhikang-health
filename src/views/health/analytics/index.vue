@@ -1,5 +1,5 @@
 <template>
-  <div class="analytics-page">
+  <div class="analytics-page health-cockpit">
     <!-- 页头：标题 + 操作 -->
     <el-card shadow="never" class="mb-4">
       <div class="flex items-start justify-between flex-wrap gap-3">

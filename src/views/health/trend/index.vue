@@ -221,7 +221,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div v-loading="loading">
+  <div v-loading="loading" class="health-cockpit">
     <el-card shadow="never">
       <template #header>
         <div class="flex-bc flex-wrap gap-3">
