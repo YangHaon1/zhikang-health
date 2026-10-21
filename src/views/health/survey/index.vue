@@ -109,7 +109,7 @@ const LABEL_COLOR: Record<string, string> = {
 </script>
 
 <template>
-  <div class="survey-page">
+  <div class="survey-page health-cockpit">
     <section class="survey-hero">
       <h1>了解你的生活方式状态</h1>
       <p>
@@ -336,7 +336,9 @@ const LABEL_COLOR: Record<string, string> = {
   margin-bottom: 18px;
   color: #fff;
   background: linear-gradient(135deg, #0f766e, #4f46e5);
+  border: 1px solid rgb(148 184 255 / 18%);
   border-radius: 20px;
+  box-shadow: 0 0 32px rgb(79 70 229 / 20%);
 
   h1 {
     margin: 0 0 8px;
@@ -353,14 +355,15 @@ const LABEL_COLOR: Record<string, string> = {
 .survey-card {
   padding: 22px 24px;
   margin-bottom: 16px;
-  background: #fff;
-  border: 1px solid #e6f0ea;
+  background: var(--hc-card, #fff);
+  border: 1px solid var(--hc-border, #e6f0ea);
   border-radius: 16px;
+  backdrop-filter: blur(12px);
 
   h3 {
     margin: 0 0 14px;
     font-size: 16px;
-    color: #17382c;
+    color: var(--hc-text-primary, #17382c);
   }
 }
 
@@ -371,7 +374,7 @@ const LABEL_COLOR: Record<string, string> = {
   align-items: center;
   margin-bottom: 12px;
   font-size: 13px;
-  color: #4b5563;
+  color: var(--hc-text-secondary, #4b5563);
 }
 
 .opts {
@@ -383,9 +386,10 @@ const LABEL_COLOR: Record<string, string> = {
 .opt {
   padding: 7px 14px;
   font-size: 13px;
+  color: var(--hc-text-primary, inherit);
   cursor: pointer;
-  background: #f4f6f8;
-  border: 1px solid #e5e7eb;
+  background: var(--hc-bg-raise, #f4f6f8);
+  border: 1px solid var(--hc-border, #e5e7eb);
   border-radius: 999px;
   transition: all 0.15s;
 }
@@ -394,6 +398,7 @@ const LABEL_COLOR: Record<string, string> = {
   color: #fff;
   background: #4f46e5;
   border-color: #4f46e5;
+  box-shadow: 0 0 10px rgb(99 102 241 / 40%);
 }
 
 .submit {
@@ -404,18 +409,20 @@ const LABEL_COLOR: Record<string, string> = {
 .result-card {
   padding: 36px 28px;
   text-align: center;
-  background: #fff;
-  border: 1px solid #e6f0ea;
+  background: var(--hc-card, #fff);
+  border: 1px solid var(--hc-border, #e6f0ea);
   border-radius: 20px;
+  backdrop-filter: blur(12px);
 
   h2 {
     margin: 0 0 12px;
     font-size: 18px;
-    color: #17382c;
+    color: var(--hc-text-primary, #17382c);
   }
 }
 
 .result-label {
+  font-family: "DIN Alternate", "JetBrains Mono", ui-monospace, monospace;
   font-size: 32px;
   font-weight: 800;
 }
@@ -423,6 +430,6 @@ const LABEL_COLOR: Record<string, string> = {
 .result-note {
   margin: 12px 0 20px;
   font-size: 12px;
-  color: #9ca3af;
+  color: var(--hc-text-secondary, #9ca3af);
 }
 </style>

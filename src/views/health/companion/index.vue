@@ -55,7 +55,7 @@ onMounted(load);
 </script>
 
 <template>
-  <div v-loading="loading" class="companion-page">
+  <div v-loading="loading" class="companion-page health-cockpit">
     <div class="head">
       <h2>AI 健康陪伴</h2>
       <el-button
@@ -123,7 +123,7 @@ onMounted(load);
   h2 {
     margin: 0;
     font-size: 20px;
-    color: #17382c;
+    color: var(--hc-text-primary, #17382c);
   }
 }
 
@@ -140,9 +140,10 @@ onMounted(load);
   align-items: center;
   padding: 40px 28px;
   text-align: center;
-  background: linear-gradient(160deg, #fff, #f0f5ff);
-  border: 1px solid #e0e7ff;
+  background: var(--hc-card, linear-gradient(160deg, #fff, #f0f5ff));
+  border: 1px solid var(--hc-border, #e0e7ff);
   border-radius: 20px;
+  backdrop-filter: blur(12px);
 }
 
 .welcome-avatar {
@@ -155,14 +156,14 @@ onMounted(load);
   color: #fff;
   background: linear-gradient(135deg, #6366f1, #8b5cf6);
   border-radius: 50%;
-  box-shadow: 0 8px 20px rgb(99 102 241 / 30%);
+  box-shadow: 0 0 24px rgb(167 139 250 / 50%);
 }
 
 .welcome-title {
   margin: 0 0 8px;
   font-size: 20px;
   font-weight: 700;
-  color: #1e1b4b;
+  color: var(--hc-text-primary, #1e1b4b);
 }
 
 .welcome-desc {
@@ -170,7 +171,7 @@ onMounted(load);
   margin: 0 0 18px;
   font-size: 14px;
   line-height: 1.7;
-  color: #64748b;
+  color: var(--hc-text-secondary, #64748b);
 }
 
 .welcome-points {
@@ -185,8 +186,9 @@ onMounted(load);
   li {
     padding: 6px 14px;
     font-size: 13px;
-    color: #4f46e5;
-    background: #eef2ff;
+    color: var(--hc-violet, #4f46e5);
+    background: rgb(99 102 241 / 12%);
+    border: 1px solid rgb(167 139 250 / 20%);
     border-radius: 999px;
   }
 }

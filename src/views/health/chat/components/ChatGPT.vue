@@ -65,7 +65,7 @@ defineExpose({ resetChat });
 </script>
 
 <template>
-  <div class="chat-wrapper">
+  <div class="chat-wrapper health-cockpit">
     <!--
       deep-chat 从挂载起就 flex:1 占满 chat-wrapper 固定高度：
       绝不 display:none、绝不因欢迎层而重排，输入框位置恒定，首次 Enter 即可发送。
@@ -236,7 +236,7 @@ defineExpose({ resetChat });
   justify-content: center;
   padding: 32px 20px;
   pointer-events: none; /* 不挡 deep-chat 输入区 */
-  background: #fff;
+  background: var(--hc-bg-base, #fff);
 }
 
 .fade-leave-active {
@@ -257,14 +257,14 @@ defineExpose({ resetChat });
   color: #fff;
   background: linear-gradient(135deg, #6366f1, #8b5cf6);
   border-radius: 50%;
-  box-shadow: 0 10px 24px rgb(99 102 241 / 32%);
+  box-shadow: 0 0 28px rgb(167 139 250 / 50%);
 }
 
 .empty-title {
   margin-bottom: 10px;
   font-size: 24px;
   font-weight: 700;
-  color: #111827;
+  color: var(--hc-text-primary, #111827);
   text-align: center;
 }
 
@@ -273,7 +273,7 @@ defineExpose({ resetChat });
   margin: 0 0 28px;
   font-size: 14px;
   line-height: 1.7;
-  color: #6b7280;
+  color: var(--hc-text-secondary, #6b7280);
   text-align: center;
 }
 
@@ -289,18 +289,18 @@ defineExpose({ resetChat });
 .suggestion-chip {
   padding: 10px 20px;
   font-size: 14px;
-  color: #374151;
+  color: var(--hc-text-secondary, #374151);
   cursor: pointer;
-  background: #fff;
-  border: 1px solid #e5e7eb;
+  background: var(--hc-card, #fff);
+  border: 1px solid var(--hc-border, #e5e7eb);
   border-radius: 20px;
   transition: all 0.2s;
 }
 
 .suggestion-chip:hover {
-  color: #16a34a;
-  background: #f0fdf4;
-  border-color: #16a34a;
+  color: var(--hc-level-low, #16a34a);
+  background: rgb(52 211 153 / 10%);
+  border-color: var(--hc-level-low, #16a34a);
 }
 
 :deep(.zhikang-chat) {

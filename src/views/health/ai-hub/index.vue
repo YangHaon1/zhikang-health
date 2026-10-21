@@ -1,8 +1,10 @@
 <script setup lang="ts">
 /** M6 AI 能力中心：集中展示 5 个 AI 能力入口 */
 import { useRouter } from "vue-router";
+import { useDark } from "@pureadmin/utils";
 defineOptions({ name: "HealthAiHub" });
 const router = useRouter();
+const { isDark } = useDark();
 
 const caps = [
   {
@@ -10,41 +12,46 @@ const caps = [
     title: "AI 健康画像",
     desc: "基于档案与近 7 天数据，生成可解释的健康类型与优势/问题清单",
     to: "/health/ai-profile",
-    color: "#075e45"
+    color: "#075e45",
+    darkColor: "#34d399"
   },
   {
     icon: "ri:radar-line",
     title: "健康风险预测",
     desc: "规则评分：BMI/睡眠/运动/心情逐项加减，每分扣分都有依据",
     to: "/health/risk",
-    color: "#b45309"
+    color: "#b45309",
+    darkColor: "#fbbf24"
   },
   {
     icon: "ri:notification-3-line",
     title: "每日健康总结",
     desc: "每天一份 AI 问候，结合昨日打卡生成今日建议",
     to: "/health/companion",
-    color: "#1d4ed8"
+    color: "#1d4ed8",
+    darkColor: "#60a5fa"
   },
   {
     icon: "ri:flag-line",
     title: "目标进度追踪",
     desc: "把你选的健康目标变成可量化的周进度条",
     to: "/health/companion",
-    color: "#7c3aed"
+    color: "#7c3aed",
+    darkColor: "#a78bfa"
   },
   {
     icon: "ri:chat-3-line",
     title: "AI 健康问答",
     desc: "在已有健康数据上下文里回答你的问题",
     to: "/health/chat",
-    color: "#0f766e"
+    color: "#0f766e",
+    darkColor: "#22d3ee"
   }
 ];
 </script>
 
 <template>
-  <div class="ai-hub-page">
+  <div class="ai-hub-page health-cockpit">
     <div class="head">
       <h2>AI 能力中心</h2>
       <p class="sub">
@@ -57,13 +64,16 @@ const caps = [
         v-for="c in caps"
         :key="c.title"
         class="cap-card"
-        :style="{ '--cap-color': c.color }"
+        :style="{ '--cap-color': isDark ? c.darkColor : c.color }"
         @click="router.push(c.to)"
       >
         <span class="cap-ai-badge">AI</span>
         <div
           class="icon"
-          :style="{ background: c.color + '15', color: c.color }"
+          :style="{
+            background: (isDark ? c.darkColor : c.color) + '1f',
+            color: isDark ? c.darkColor : c.color
+          }"
         >
           <iconify-icon :icon="c.icon" width="28" />
         </div>
@@ -87,13 +97,13 @@ const caps = [
   h2 {
     margin: 0 0 6px;
     font-size: 22px;
-    color: #17382c;
+    color: var(--hc-text-primary, #17382c);
   }
 
   .sub {
     margin: 0;
     font-size: 13px;
-    color: #6b7f74;
+    color: var(--hc-text-secondary, #6b7f74);
   }
 }
 
@@ -107,30 +117,33 @@ const caps = [
   position: relative;
   padding: 22px;
   cursor: pointer;
-  background: #fff;
-  border: 1px solid #e6f0ea;
+  background: var(--hc-card, #fff);
+  border: 1px solid var(--hc-border, #e6f0ea);
   border-radius: 18px;
+  backdrop-filter: blur(12px);
   transition:
     transform 0.18s,
-    box-shadow 0.18s;
+    box-shadow 0.18s,
+    border-color 0.18s;
 
   &:hover {
+    border-color: var(--hc-border-strong, transparent);
     box-shadow: 0 14px 30px
-      color-mix(in srgb, var(--cap-color) 16%, transparent);
+      color-mix(in srgb, var(--cap-color) 20%, transparent);
     transform: translateY(-4px);
   }
 
   h3 {
     margin: 12px 0 6px;
     font-size: 15px;
-    color: #17382c;
+    color: var(--hc-text-primary, #17382c);
   }
 
   p {
     margin: 0 0 12px;
     font-size: 12px;
     line-height: 1.6;
-    color: #6b7f74;
+    color: var(--hc-text-secondary, #6b7f74);
   }
 
   .go {
@@ -151,6 +164,7 @@ const caps = [
   letter-spacing: 0.05em;
   background: linear-gradient(135deg, #6366f1, #8b5cf6);
   border-radius: 999px;
+  box-shadow: 0 0 10px rgb(167 139 250 / 40%);
 }
 
 .icon {

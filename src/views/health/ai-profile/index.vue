@@ -50,7 +50,7 @@ onMounted(load);
 </script>
 
 <template>
-  <div v-loading="loading" class="ai-profile-page">
+  <div v-loading="loading" class="ai-profile-page health-cockpit">
     <template v-if="profile">
       <!--
         分析状态：画像由后端一次生成（规则引擎 + 大模型润色总结），
@@ -107,8 +107,9 @@ onMounted(load);
   padding: 14px 16px;
   font-size: 13px;
   line-height: 1.7;
-  color: #2c4a3d;
-  background: #f0f7f3;
+  color: var(--hc-text-primary, #2c4a3d);
+  background: var(--hc-card, #f0f7f3);
+  border: 1px solid var(--hc-border, transparent);
   border-radius: 10px;
 }
 
@@ -125,9 +126,10 @@ onMounted(load);
   align-items: center;
   justify-content: center;
   padding: 16px;
-  background: #fff;
-  border: 1px solid #e6f0ea;
+  background: var(--hc-card, #fff);
+  border: 1px solid var(--hc-border, #e6f0ea);
   border-radius: 16px;
+  backdrop-filter: blur(12px);
 }
 
 .profile-note {
@@ -155,12 +157,13 @@ onMounted(load);
   color: #fff;
   background: linear-gradient(135deg, #6366f1, #8b5cf6);
   border-radius: 50%;
+  box-shadow: 0 0 10px rgb(167 139 250 / 50%);
 }
 
 .step-label {
   font-size: 14px;
   font-weight: 600;
-  color: #1e1b4b;
+  color: var(--hc-text-primary, #1e1b4b);
 }
 
 .step-line {
@@ -169,5 +172,6 @@ onMounted(load);
   margin: 0 12px;
   background: linear-gradient(90deg, #6366f1, #a5b4fc);
   border-radius: 2px;
+  box-shadow: 0 0 6px rgb(167 139 250 / 40%);
 }
 </style>
