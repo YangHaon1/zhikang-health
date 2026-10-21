@@ -1,0 +1,114 @@
+/**
+ * 智康健康管理系统 — 深色驾驶舱主题
+ *
+ * 作用域：仅在 `html.dark .health-cockpit` 下生效，浅色模式与 system 页不受影响。
+ * 用法：health 模块每个页面根节点加 `class="health-cockpit"`。
+ */
+
+@use "sass:color";
+
+html.dark .health-cockpit {
+  /* ===== 背景层级 ===== */
+  --hc-bg-base: #050810;
+  --hc-bg-raise: #0a1120;
+  --hc-card: rgb(148 184 255 / 4%);
+  --hc-card-hover: rgb(148 184 255 / 8%);
+  --hc-border: rgb(148 184 255 / 12%);
+  --hc-border-strong: rgb(148 184 255 / 28%);
+
+  /* ===== 主色与霓虹 ===== */
+  --hc-primary: #22d3ee;
+  --hc-violet: #a78bfa;
+  --hc-blue: #60a5fa;
+  --hc-cyan-grad: linear-gradient(135deg, #22d3ee 0%, #60a5fa 100%);
+  --hc-violet-grad: linear-gradient(135deg, #6366f1 0%, #a78bfa 100%);
+
+  /* ===== 语义色（深底专用） ===== */
+  --hc-level-low: #34d399;
+  --hc-level-mid: #fbbf24;
+  --hc-level-high: #fb923c;
+  --hc-level-critical: #f87171;
+  --hc-level-unknown: #94a3b8;
+
+  /* ===== 文字 ===== */
+  --hc-text-primary: #e6edf7;
+  --hc-text-secondary: #9aa8bf;
+  --hc-text-disabled: #5b6b85;
+
+  /* 页面根容器底色 */
+  min-height: 100%;
+  color: var(--hc-text-primary);
+  background:
+    radial-gradient(
+      1200px 600px at 80% -10%,
+      rgb(99 102 241 / 10%),
+      transparent 60%
+    ),
+    radial-gradient(
+      900px 500px at -10% 110%,
+      rgb(34 211 238 / 8%),
+      transparent 60%
+    ),
+    var(--hc-bg-base);
+
+  @supports not (backdrop-filter: blur(1px)) {
+    .hc-card {
+      background: var(--hc-bg-raise);
+      backdrop-filter: none;
+    }
+  }
+
+  /* ===== 通用玻璃卡片 ===== */
+  .hc-card {
+    background: var(--hc-card);
+    border: 1px solid var(--hc-border);
+    border-radius: 12px;
+    backdrop-filter: blur(12px);
+    backdrop-filter: blur(12px);
+    transition:
+      border-color 0.2s,
+      background 0.2s,
+      transform 0.2s;
+  }
+
+  .hc-card--hover:hover {
+    background: var(--hc-card-hover);
+    border-color: var(--hc-border-strong);
+  }
+
+  .hc-card--glow {
+    border-color: var(--hc-border-strong);
+    box-shadow:
+      0 0 24px rgb(34 211 238 / 8%),
+      inset 0 1px 0 rgb(255 255 255 / 4%);
+  }
+
+  /* ===== 霓虹数字 ===== */
+  .hc-num {
+    font-family: "DIN Alternate", "JetBrains Mono", ui-monospace, monospace;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.5px;
+  }
+
+  /* ===== 霓虹分割线 ===== */
+  .hc-divider {
+    height: 1px;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      rgb(34 211 238 / 40%),
+      rgb(167 139 250 / 40%),
+      transparent
+    );
+    border: none;
+  }
+
+  /* ===== 霓虹进度条 ===== */
+  .hc-progress-glow {
+    .el-progress__bar,
+    .el-progress-bar__inner {
+      background-image: var(--hc-cyan-grad) !important;
+      box-shadow: 0 0 8px rgb(34 211 238 / 60%);
+    }
+  }
+}

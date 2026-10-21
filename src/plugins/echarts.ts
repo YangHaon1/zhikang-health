@@ -33,11 +33,14 @@ use([
   VisualMapComponent
 ]);
 
+import { registerHealthDarkTheme } from "./echarts-theme-health-dark";
+
 /**
  * @description 按需引入echarts，具体看 https://echarts.apache.org/handbook/zh/basics/import/#%E5%9C%A8-typescript-%E4%B8%AD%E6%8C%89%E9%9C%80%E5%BC%95%E5%85%A5
 
  */
 export function useEcharts(app: App) {
+  registerHealthDarkTheme();
   app.config.globalProperties.$echarts = echarts;
 }
 
