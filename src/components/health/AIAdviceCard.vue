@@ -11,7 +11,7 @@ defineProps<{
 </script>
 
 <template>
-  <div class="ai-advice-card">
+  <div class="ai-advice-card health-cockpit">
     <p class="card-kicker">
       <span class="ai-badge">AI</span>
       健康建议
@@ -26,9 +26,11 @@ defineProps<{
 <style lang="scss" scoped>
 .ai-advice-card {
   padding: 20px 22px;
-  background: linear-gradient(135deg, #f0f7f3 0%, #fff 100%);
-  border: 1px solid #d8e8df;
+  background: var(--hc-card, linear-gradient(135deg, #f0f7f3 0%, #fff 100%));
+  border: 1px solid var(--hc-border, #d8e8df);
+  border-top: 2px solid var(--hc-violet, #075e45);
   border-radius: 16px;
+  backdrop-filter: blur(12px);
 }
 
 .card-kicker {
@@ -38,7 +40,7 @@ defineProps<{
   margin: 0 0 10px;
   font-size: 12px;
   font-weight: 600;
-  color: #8aa094;
+  color: var(--hc-text-secondary, #8aa094);
 }
 
 .ai-badge {
@@ -46,7 +48,7 @@ defineProps<{
   font-size: 11px;
   font-weight: 700;
   color: #fff;
-  background: #075e45;
+  background: var(--hc-violet-grad, #075e45);
   border-radius: 6px;
 }
 
@@ -59,12 +61,12 @@ defineProps<{
     padding: 6px 0;
     font-size: 13px;
     line-height: 1.7;
-    color: #2c4a3d;
+    color: var(--hc-text-primary, #2c4a3d);
 
     &::before {
       margin-right: 6px;
       font-weight: 700;
-      color: #075e45;
+      color: var(--hc-violet, #075e45);
       content: "·";
     }
   }
@@ -74,6 +76,6 @@ defineProps<{
   margin: 0;
   font-size: 12px;
   line-height: 1.7;
-  color: #8aa094;
+  color: var(--hc-text-secondary, #8aa094);
 }
 </style>

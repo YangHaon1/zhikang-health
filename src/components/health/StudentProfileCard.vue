@@ -50,7 +50,7 @@ async function save() {
 </script>
 
 <template>
-  <el-card shadow="never" class="student-card">
+  <el-card shadow="never" class="student-card health-cockpit">
     <template #header>
       <span class="font-medium">学生健康画像</span>
       <span class="text-xs text-gray-400 ml-2"
@@ -127,5 +127,16 @@ async function save() {
 .student-card {
   max-width: 640px;
   margin: 16px auto;
+}
+
+.student-card:deep(.el-card__body) {
+  background: transparent;
+}
+
+html.dark .health-cockpit.student-card {
+  --el-card-bg-color: rgb(148 184 255 / 4%);
+
+  border: 1px solid rgb(148 184 255 / 12%);
+  backdrop-filter: blur(12px);
 }
 </style>

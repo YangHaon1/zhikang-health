@@ -4,7 +4,9 @@ defineOptions({ name: "AiBadge" });
 </script>
 
 <template>
-  <span class="ai-badge">AI 辅助分析 · 基于您的健康数据生成</span>
+  <span class="ai-badge health-cockpit"
+    >AI 辅助分析 · 基于您的健康数据生成</span
+  >
 </template>
 
 <style lang="scss" scoped>
@@ -17,5 +19,11 @@ defineOptions({ name: "AiBadge" });
   background: #e6f4ec;
   border: 1px solid #b8dcc8;
   border-radius: 999px;
+}
+
+.health-cockpit.ai-badge {
+  color: #a78bfa;
+  background: rgb(167 139 250 / 12%);
+  border-color: rgb(167 139 250 / 35%);
 }
 </style>

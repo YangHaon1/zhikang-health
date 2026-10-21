@@ -6,7 +6,7 @@ defineProps<{ profile: AiProfileView }>();
 </script>
 
 <template>
-  <div class="risk-card">
+  <div class="risk-card health-cockpit">
     <p class="kicker">健康风险分析</p>
     <div class="big">{{ profile.healthScore }}</div>
     <p class="level" :class="profile.riskLevel">{{ profile.riskLevel }}</p>
@@ -17,22 +17,25 @@ defineProps<{ profile: AiProfileView }>();
 .risk-card {
   padding: 24px;
   text-align: center;
-  background: #fff;
-  border: 1px solid #e6f0ea;
+  background: var(--hc-card, #fff);
+  border: 1px solid var(--hc-border, #e6f0ea);
   border-radius: 16px;
+  backdrop-filter: blur(12px);
 }
 
 .kicker {
   margin: 0;
   font-size: 12px;
-  color: #8aa094;
+  color: var(--hc-text-secondary, #8aa094);
 }
 
 .big {
+  font-family: "DIN Alternate", "JetBrains Mono", ui-monospace, monospace;
   font-size: 56px;
   font-weight: 750;
+  font-variant-numeric: tabular-nums;
   line-height: 1.1;
-  color: #17382c;
+  color: var(--hc-text-primary, #17382c);
 }
 
 .level {
@@ -42,14 +45,14 @@ defineProps<{ profile: AiProfileView }>();
 }
 
 .level.低风险 {
-  color: #16a34a;
+  color: var(--hc-level-low, #16a34a);
 }
 
 .level.中风险 {
-  color: #f59e0b;
+  color: var(--hc-level-mid, #f59e0b);
 }
 
 .level.高风险 {
-  color: #dc2626;
+  color: var(--hc-level-critical, #dc2626);
 }
 </style>

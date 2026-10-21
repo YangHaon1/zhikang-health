@@ -28,7 +28,7 @@ const deltaText = computed(() => {
 </script>
 
 <template>
-  <div class="today-score-card">
+  <div class="today-score-card health-cockpit">
     <p class="card-kicker">今日健康指数</p>
     <div class="score-main">
       <div class="ring" :class="{ empty: !index }">
@@ -71,9 +71,10 @@ const deltaText = computed(() => {
 <style lang="scss" scoped>
 .today-score-card {
   padding: 20px 22px;
-  background: linear-gradient(160deg, #fff, #f3faf6);
-  border: 1px solid #e6f0ea;
+  background: var(--hc-card, linear-gradient(160deg, #fff, #f3faf6));
+  border: 1px solid var(--hc-border, #e6f0ea);
   border-radius: 16px;
+  backdrop-filter: blur(12px);
 
   :deep(.el-tag) {
     margin: 0 6px 6px 0;
@@ -84,7 +85,7 @@ const deltaText = computed(() => {
   margin: 0 0 12px;
   font-size: 12px;
   font-weight: 600;
-  color: #8aa094;
+  color: var(--hc-text-secondary, #8aa094);
 }
 
 .score-main {
@@ -106,13 +107,14 @@ const deltaText = computed(() => {
 
 .ring-bg {
   fill: none;
-  stroke: #e6f0ea;
+  stroke: var(--hc-border, #e6f0ea);
   stroke-width: 9;
 }
 
 .ring-fg {
+  filter: drop-shadow(0 0 6px var(--hc-primary, transparent));
   fill: none;
-  stroke: #16a34a;
+  stroke: var(--hc-primary, #16a34a);
   stroke-width: 9;
   stroke-linecap: round;
   transition: stroke-dasharray 0.9s ease;
@@ -127,10 +129,12 @@ const deltaText = computed(() => {
 }
 
 .score-num {
+  font-family: "DIN Alternate", "JetBrains Mono", ui-monospace, monospace;
   font-size: 34px;
   font-weight: 800;
+  font-variant-numeric: tabular-nums;
   line-height: 1;
-  color: #0b3b2c;
+  color: var(--hc-text-primary, #0b3b2c);
   letter-spacing: -0.04em;
 }
 
@@ -143,13 +147,13 @@ const deltaText = computed(() => {
 .score-level {
   font-size: 18px;
   font-weight: 700;
-  color: #075e45;
+  color: var(--hc-text-primary, #075e45);
 }
 
 .score-delta {
   font-size: 12px;
   font-weight: 600;
-  color: #16a34a;
+  color: var(--hc-level-low, #16a34a);
 }
 
 .adjust-tags {
@@ -159,12 +163,12 @@ const deltaText = computed(() => {
 .adjust-title {
   margin: 0 0 6px;
   font-size: 11px;
-  color: #8aa094;
+  color: var(--hc-text-secondary, #8aa094);
 }
 
 .adjust-hint {
   margin: 14px 0 0;
   font-size: 12px;
-  color: #8aa094;
+  color: var(--hc-text-secondary, #8aa094);
 }
 </style>

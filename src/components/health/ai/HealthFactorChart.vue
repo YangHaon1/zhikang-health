@@ -35,10 +35,10 @@ const bars = computed(() =>
     width: Math.max(2, Math.min(100, f.value)),
     color:
       f.direction === "risk_up"
-        ? "#f59e0b"
+        ? "var(--hc-level-mid, #f59e0b)"
         : f.direction === "risk_down"
-          ? "#16a34a"
-          : "#94a3b8",
+          ? "var(--hc-level-low, #16a34a)"
+          : "var(--hc-level-unknown, #94a3b8)",
     dirText:
       f.direction === "risk_up"
         ? "升高风险"
@@ -50,7 +50,7 @@ const bars = computed(() =>
 </script>
 
 <template>
-  <div class="factor-card">
+  <div class="factor-card health-cockpit">
     <p class="kicker">主要影响因素</p>
 
     <!-- 1) 有真实归因：按 SHAP 贡献度画条 -->
@@ -82,16 +82,17 @@ const bars = computed(() =>
 <style lang="scss" scoped>
 .factor-card {
   padding: 20px;
-  background: #fff;
-  border: 1px solid #e6f0ea;
+  background: var(--hc-card, #fff);
+  border: 1px solid var(--hc-border, #e6f0ea);
   border-radius: 16px;
+  backdrop-filter: blur(12px);
 }
 
 .kicker {
   margin: 0 0 12px;
   font-size: 12px;
   font-weight: 600;
-  color: #8aa094;
+  color: var(--hc-text-secondary, #8aa094);
 }
 
 .row {
@@ -104,45 +105,46 @@ const bars = computed(() =>
 .name {
   width: 72px;
   font-size: 13px;
-  color: #2c4a3d;
+  color: var(--hc-text-primary, #2c4a3d);
 }
 
 .bar {
   flex: 1;
   height: 8px;
   overflow: hidden;
-  background: #eef4f0;
+  background: var(--hc-bg-raise, #eef4f0);
   border-radius: 4px;
 }
 
 .fill {
   height: 100%;
   border-radius: 4px;
+  box-shadow: 0 0 6px currentcolor;
 }
 
 .dir {
   width: 58px;
   font-size: 12px;
-  color: #8aa094;
+  color: var(--hc-text-secondary, #8aa094);
   text-align: right;
 }
 
 .text-item {
   font-size: 13px;
   line-height: 1.8;
-  color: #2c4a3d;
+  color: var(--hc-text-primary, #2c4a3d);
 }
 
 .note {
   margin: 8px 0 0;
   font-size: 12px;
   line-height: 1.6;
-  color: #9ca3af;
+  color: var(--hc-text-secondary, #9ca3af);
 }
 
 .empty {
   margin: 0;
   font-size: 12px;
-  color: #8aa094;
+  color: var(--hc-text-secondary, #8aa094);
 }
 </style>

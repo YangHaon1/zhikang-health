@@ -6,7 +6,7 @@ defineProps<{ advice: string[] }>();
 </script>
 
 <template>
-  <div class="advice-card">
+  <div class="advice-card health-cockpit">
     <AiBadge />
     <p class="kicker">AI 改善建议</p>
     <ul v-if="advice.length">
@@ -19,16 +19,18 @@ defineProps<{ advice: string[] }>();
 <style lang="scss" scoped>
 .advice-card {
   padding: 20px;
-  background: #fff;
-  border: 1px solid #e6f0ea;
+  background: var(--hc-card, #fff);
+  border: 1px solid var(--hc-border, #e6f0ea);
+  border-left: 3px solid var(--hc-violet, #075e45);
   border-radius: 16px;
+  backdrop-filter: blur(12px);
 }
 
 .kicker {
-  margin: 0 0 10px;
+  margin: 10px 0;
   font-size: 12px;
   font-weight: 600;
-  color: #8aa094;
+  color: var(--hc-text-secondary, #8aa094);
 }
 
 ul {
@@ -40,10 +42,10 @@ ul {
     padding: 6px 0;
     font-size: 13px;
     line-height: 1.7;
-    color: #2c4a3d;
+    color: var(--hc-text-primary, #2c4a3d);
 
     &::before {
-      color: #075e45;
+      color: var(--hc-violet, #075e45);
       content: "→ ";
     }
   }
@@ -52,6 +54,6 @@ ul {
 .empty {
   margin: 0;
   font-size: 12px;
-  color: #8aa094;
+  color: var(--hc-text-secondary, #8aa094);
 }
 </style>

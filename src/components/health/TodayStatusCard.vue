@@ -37,7 +37,7 @@ const dietText = computed(() =>
 </script>
 
 <template>
-  <div class="today-status-card">
+  <div class="today-status-card health-cockpit">
     <p class="card-kicker">今日状态</p>
     <ul class="status-list">
       <li>
@@ -63,16 +63,17 @@ const dietText = computed(() =>
 <style lang="scss" scoped>
 .today-status-card {
   padding: 20px 22px;
-  background: #fff;
-  border: 1px solid #e6f0ea;
+  background: var(--hc-card, #fff);
+  border: 1px solid var(--hc-border, #e6f0ea);
   border-radius: 16px;
+  backdrop-filter: blur(12px);
 }
 
 .card-kicker {
   margin: 0 0 10px;
   font-size: 12px;
   font-weight: 600;
-  color: #8aa094;
+  color: var(--hc-text-secondary, #8aa094);
 }
 
 .status-list {
@@ -89,11 +90,11 @@ const dietText = computed(() =>
 }
 
 .status-label {
-  color: #6b7f74;
+  color: var(--hc-text-secondary, #6b7f74);
 }
 
 .status-value {
   font-weight: 600;
-  color: #17382c;
+  color: var(--hc-text-primary, #17382c);
 }
 </style>
