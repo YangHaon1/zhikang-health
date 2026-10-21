@@ -92,7 +92,9 @@ const quickLinks = [
     desc: "录入今日指标",
     to: "/health/records/index",
     bg: "#e8f7ef",
-    color: "#075e45"
+    color: "#075e45",
+    darkBg: "rgba(52, 211, 153, 0.12)",
+    darkColor: "#34d399"
   },
   {
     icon: "ri:sparkling-2-line",
@@ -100,7 +102,9 @@ const quickLinks = [
     desc: "查看健康分析",
     to: "/health/ai-profile",
     bg: "#eef2ff",
-    color: "#4f46e5"
+    color: "#4f46e5",
+    darkBg: "rgba(167, 139, 250, 0.12)",
+    darkColor: "#a78bfa"
   },
   {
     icon: "ri:line-chart-line",
@@ -108,7 +112,9 @@ const quickLinks = [
     desc: "近 30 天变化",
     to: "/health/trend",
     bg: "#fff7ed",
-    color: "#c2410c"
+    color: "#c2410c",
+    darkBg: "rgba(251, 146, 60, 0.12)",
+    darkColor: "#fb923c"
   },
   {
     icon: "ri:file-chart-line",
@@ -116,7 +122,9 @@ const quickLinks = [
     desc: "阶段性总结",
     to: "/health/report",
     bg: "#ecfeff",
-    color: "#0e7490"
+    color: "#0e7490",
+    darkBg: "rgba(34, 211, 238, 0.12)",
+    darkColor: "#22d3ee"
   },
   {
     icon: "ri:survey-line",
@@ -124,7 +132,9 @@ const quickLinks = [
     desc: "大学生生活方式调研",
     to: "/health/survey",
     bg: "#f5f3ff",
-    color: "#6d28d9"
+    color: "#6d28d9",
+    darkBg: "rgba(96, 165, 250, 0.12)",
+    darkColor: "#60a5fa"
   }
 ];
 // 管理员可一键生成演示数据（roles 登录后固定，此处直接读一次即可）
@@ -134,7 +144,7 @@ const profile = ref<HealthProfile | null>(null);
 const records = ref<HealthRecord[]>([]);
 
 const { isDark } = useDark();
-const theme = computed(() => (isDark.value ? "dark" : undefined));
+const theme = computed(() => (isDark.value ? "health-dark" : undefined));
 
 const trendRef = ref<HTMLDivElement>();
 let trendChart: ReturnType<typeof echarts.init> | null = null;
@@ -479,7 +489,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div v-loading="loading" class="health-dashboard">
+  <div v-loading="loading" class="health-dashboard health-cockpit">
     <section class="dashboard-hero">
       <div>
         <p class="hero-kicker">智康健康管理</p>
@@ -650,7 +660,14 @@ onBeforeUnmount(() => {
         class="quick-item"
         @click="router.push(q.to)"
       >
-        <div class="quick-icon" :style="{ background: q.bg, color: q.color }">
+        <div
+          class="quick-icon"
+          :style="
+            isDark
+              ? { background: q.darkBg, color: q.darkColor }
+              : { background: q.bg, color: q.color }
+          "
+        >
           <iconify-icon :icon="q.icon" width="22" />
         </div>
         <div class="quick-text">
@@ -845,9 +862,10 @@ onBeforeUnmount(() => {
 .demo-path {
   padding: 16px 20px;
   margin-bottom: 20px;
-  background: #fff;
-  border: 1px solid #e6f0ea;
+  background: var(--hc-card, #fff);
+  border: 1px solid var(--hc-border, #e6f0ea);
   border-radius: 16px;
+  backdrop-filter: blur(12px);
 }
 
 .demo-head {
@@ -857,7 +875,7 @@ onBeforeUnmount(() => {
   margin-bottom: 12px;
   font-size: 13px;
   font-weight: 700;
-  color: #4f46e5;
+  color: var(--hc-violet, #4f46e5);
 }
 
 .demo-steps {
@@ -874,9 +892,9 @@ onBeforeUnmount(() => {
   padding: 8px 14px;
   font-size: 13px;
   font-weight: 600;
-  color: #17382c;
+  color: var(--hc-text-primary, #17382c);
   cursor: pointer;
-  background: #f4f6ff;
+  background: rgb(99 102 241 / 8%);
   border-radius: 999px;
   transition: all 0.15s ease;
 
@@ -889,7 +907,7 @@ onBeforeUnmount(() => {
 .demo-line {
   width: 18px;
   height: 2px;
-  background: #d8defc;
+  background: var(--hc-border, #d8defc);
 }
 
 @media (width <= 768px) {
@@ -931,8 +949,10 @@ onBeforeUnmount(() => {
 }
 
 .subhealth-card {
-  border: 1px solid #e6f0ea;
+  background: var(--hc-card, transparent);
+  border: 1px solid var(--hc-border, #e6f0ea);
   border-radius: 16px;
+  backdrop-filter: blur(12px);
 }
 
 .dim-list {
@@ -953,25 +973,25 @@ onBeforeUnmount(() => {
   grid-column: 1 / -1;
   margin-top: -6px;
   font-size: 12px;
-  color: #9ca3af;
+  color: var(--hc-text-secondary, #9ca3af);
 }
 
 .dim-note {
   margin: 10px 0 0;
   font-size: 12px;
   line-height: 1.6;
-  color: #9ca3af;
+  color: var(--hc-text-secondary, #9ca3af);
 }
 
 .dim-label {
   font-size: 13px;
-  color: #4b5563;
+  color: var(--hc-text-secondary, #4b5563);
 }
 
 .dim-bar {
   height: 8px;
   overflow: hidden;
-  background: #f0f4f1;
+  background: var(--hc-bg-raise, #f0f4f1);
   border-radius: 999px;
 }
 
@@ -984,7 +1004,7 @@ onBeforeUnmount(() => {
 .dim-value {
   font-size: 14px;
   font-weight: 700;
-  color: #17382c;
+  color: var(--hc-text-primary, #17382c);
   text-align: right;
 }
 
@@ -1012,9 +1032,11 @@ onBeforeUnmount(() => {
   align-items: center;
   padding: 14px 16px;
   margin-top: 18px;
-  color: #4f46e5;
+  color: var(--hc-violet, #4f46e5);
   cursor: pointer;
-  background: linear-gradient(120deg, #eef2ff, #f5f3ff);
+  background: var(--hc-card, linear-gradient(120deg, #eef2ff, #f5f3ff));
+  border: 1px solid var(--hc-border, transparent);
+  border-left: 3px solid var(--hc-violet, #4f46e5);
   border-radius: 12px;
   transition: transform 0.18s ease;
 
@@ -1049,15 +1071,18 @@ onBeforeUnmount(() => {
   align-items: center;
   padding: 16px;
   cursor: pointer;
-  background: #fff;
-  border: 1px solid #e6f0ea;
+  background: var(--hc-card, #fff);
+  border: 1px solid var(--hc-border, #e6f0ea);
   border-radius: 16px;
+  backdrop-filter: blur(12px);
   transition:
     transform 0.18s ease,
-    box-shadow 0.18s ease;
+    box-shadow 0.18s ease,
+    border-color 0.18s ease;
 
   &:hover {
-    box-shadow: 0 12px 26px rgb(7 94 69 / 12%);
+    border-color: var(--hc-border-strong, rgb(7 94 69 / 12%));
+    box-shadow: 0 12px 26px rgb(34 211 238 / 8%);
     transform: translateY(-3px);
   }
 }
@@ -1076,13 +1101,13 @@ onBeforeUnmount(() => {
   margin: 0;
   font-size: 14px;
   font-weight: 700;
-  color: #17382c;
+  color: var(--hc-text-primary, #17382c);
 }
 
 .quick-desc {
   margin: 2px 0 0;
   font-size: 12px;
-  color: #8aa094;
+  color: var(--hc-text-secondary, #8aa094);
 }
 
 @media (width <= 960px) {
@@ -1103,12 +1128,15 @@ onBeforeUnmount(() => {
   background:
     radial-gradient(
       circle at 88% 20%,
-      rgb(255 255 255 / 22%),
+      rgb(167 139 250 / 28%),
       transparent 21rem
     ),
-    linear-gradient(125deg, #075e45, #16a34a 58%, #55b77b);
+    linear-gradient(125deg, #0f766e, #4f46e5 58%, #6366f1);
+  border: 1px solid rgb(148 184 255 / 18%);
   border-radius: 20px;
-  box-shadow: 0 16px 32px rgb(22 163 74 / 18%);
+  box-shadow:
+    0 16px 40px rgb(15 118 110 / 20%),
+    0 0 32px rgb(99 102 241 / 15%);
 }
 
 .hero-kicker {
@@ -1214,24 +1242,25 @@ onBeforeUnmount(() => {
   padding: 10px 16px;
   font-size: 12px;
   line-height: 1.6;
-  color: #6b7f74;
-  background: #f0f7f3;
-  border: 1px dashed #b9d8c5;
+  color: var(--hc-text-secondary, #6b7f74);
+  background: var(--hc-card, #f0f7f3);
+  border: 1px dashed var(--hc-border, #b9d8c5);
   border-radius: 10px;
 }
 
 .evidence-collapse {
   margin-top: 8px;
   overflow: hidden;
-  border: 1px solid #e6f0ea;
+  background: var(--hc-card, transparent);
+  border: 1px solid var(--hc-border, #e6f0ea);
   border-radius: 10px;
 
   :deep(.el-collapse-item__header) {
     padding: 0 16px;
     font-size: 13px;
     font-weight: 600;
-    color: #075e45;
-    background: #fafdfb;
+    color: var(--hc-primary, #075e45);
+    background: transparent;
   }
 
   :deep(.el-collapse-item__content) {
@@ -1246,7 +1275,7 @@ onBeforeUnmount(() => {
 
   li {
     padding: 10px 0;
-    border-bottom: 1px dashed #eef4f0;
+    border-bottom: 1px dashed var(--hc-border, #eef4f0);
 
     &:last-child {
       border-bottom: none;
@@ -1264,14 +1293,14 @@ onBeforeUnmount(() => {
 .evidence-name {
   font-size: 13px;
   font-weight: 700;
-  color: #17382c;
+  color: var(--hc-text-primary, #17382c);
 }
 
 .evidence-line {
   margin-top: 3px;
   font-size: 12px;
   line-height: 1.6;
-  color: #6b7f74;
+  color: var(--hc-text-secondary, #6b7f74);
 }
 
 .metric-grid {
@@ -1285,14 +1314,18 @@ onBeforeUnmount(() => {
 .metric-card,
 .trend-card {
   height: 100%;
-  border: 1px solid #e6f0ea;
+  background: var(--hc-card, transparent);
+  border: 1px solid var(--hc-border, #e6f0ea);
   border-radius: 16px;
+  backdrop-filter: blur(12px);
   transition:
     transform 0.2s ease,
-    box-shadow 0.2s ease;
+    box-shadow 0.2s ease,
+    border-color 0.2s ease;
 
   &:hover {
-    box-shadow: 0 14px 28px rgb(15 94 69 / 10%);
+    border-color: var(--hc-border-strong, rgb(15 94 69 / 10%));
+    box-shadow: 0 14px 28px rgb(34 211 238 / 8%);
     transform: translateY(-3px);
   }
 }
@@ -1300,7 +1333,7 @@ onBeforeUnmount(() => {
 .metric-label {
   font-size: 13px;
   font-weight: 600;
-  color: #6b7f74;
+  color: var(--hc-text-secondary, #6b7f74);
 }
 
 .metric-value-row {
@@ -1311,10 +1344,12 @@ onBeforeUnmount(() => {
 }
 
 .metric-value {
+  font-family: "DIN Alternate", "JetBrains Mono", ui-monospace, monospace;
   font-size: 30px;
   font-weight: 750;
+  font-variant-numeric: tabular-nums;
   line-height: 1;
-  color: #17382c;
+  color: var(--hc-text-primary, #17382c);
   letter-spacing: -0.04em;
 }
 
@@ -1327,26 +1362,26 @@ onBeforeUnmount(() => {
     margin: 0 0 4px;
     font-size: 12px;
     font-weight: 700;
-    color: #16a34a;
+    color: var(--hc-level-low, #16a34a);
     letter-spacing: 0.08em;
   }
 
   h2 {
     margin: 0;
     font-size: 17px;
-    color: #17382c;
+    color: var(--hc-text-primary, #17382c);
   }
 
   > span {
     font-size: 12px;
-    color: #8aa094;
+    color: var(--hc-text-secondary, #8aa094);
   }
 }
 
 .dashboard-empty {
   padding: 42px 20px;
-  background: #fff;
-  border: 1px dashed #b9d8c5;
+  background: var(--hc-card, #fff);
+  border: 1px dashed var(--hc-border, #b9d8c5);
   border-radius: 16px;
 }
 
@@ -1420,9 +1455,10 @@ onBeforeUnmount(() => {
 .today-card {
   padding: 14px 18px;
   margin-bottom: 20px;
-  background: linear-gradient(135deg, #f0faf5, #f6fdf9);
-  border: 1px solid #d8efe3;
+  background: var(--hc-card, linear-gradient(135deg, #f0faf5, #f6fdf9));
+  border: 1px solid var(--hc-border, #d8efe3);
   border-radius: 12px;
+  backdrop-filter: blur(12px);
 }
 
 .today-head {
@@ -1446,7 +1482,7 @@ onBeforeUnmount(() => {
 .today-streak {
   font-size: 13px;
   font-weight: 600;
-  color: #075e45;
+  color: var(--hc-text-primary, #075e45);
 }
 
 .today-plan {
@@ -1457,7 +1493,7 @@ onBeforeUnmount(() => {
   margin-bottom: 6px;
   font-size: 13px;
   font-weight: 600;
-  color: #17382c;
+  color: var(--hc-text-primary, #17382c);
 }
 
 .today-tags {
@@ -1468,6 +1504,6 @@ onBeforeUnmount(() => {
 
 .today-done {
   font-size: 13px;
-  color: #16a34a;
+  color: var(--hc-level-low, #16a34a);
 }
 </style>
