@@ -18,7 +18,6 @@ import { llmAvailable, callLlm } from "../../llm.js";
 import { calculateBMI } from "../../../shared/health-score.js";
 
 const router = Router();
-router.use(authMiddleware);
 
 interface AiProfileRow {
   id: number;
@@ -64,7 +63,7 @@ function recentDaily(userId: number) {
 }
 
 /** GET /api/ai/profile —— 读已有画像（无则 null，前端引导用户点「生成」） */
-router.get("/ai/profile", (req, res) => {
+router.get("/ai/profile", authMiddleware, (req, res) => {
   const row = db
     .prepare("SELECT * FROM health_ai_profiles WHERE user_id = ?")
     .get(req.user!.id) as AiProfileRow | undefined;
@@ -72,7 +71,7 @@ router.get("/ai/profile", (req, res) => {
 });
 
 /** POST /api/ai/profile/generate —— 重新分析并覆盖保存 */
-router.post("/ai/profile/generate", async (req, res) => {
+router.post("/ai/profile/generate", authMiddleware, async (req, res) => {
   const userId = req.user!.id;
   ensureHealthAiProfiles();
 

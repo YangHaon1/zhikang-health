@@ -125,7 +125,7 @@
 
 ## 快速开始
 
-环境要求：Node.js 18+、pnpm，Python 3.10+（可选，用于 ML 服务）。
+环境要求：Node.js ≥22.22.1（推荐与 `.nvmrc` 一致的 24.19.0）、pnpm ≥11（`packageManager` 字段为 pnpm@12.4.2），Python 3.10+（可选，用于 ML 服务）。
 
 ```bash
 # 安装依赖
@@ -145,22 +145,26 @@ pnpm dev:all     # 并行启动 ML(8000) + 后端(3000) + 前端(8848)
 
 ```bash
 # 1) Python ML 服务（端口 8000，可选但推荐）
-python -m venv server-ml/.venv
-server-ml/.venv/Scripts/python.exe -m pip install -r server-ml/requirements.txt
+python3 -m venv server-ml/.venv
+# Linux / macOS:
+server-ml/.venv/bin/pip install -r server-ml/requirements.txt
+# Windows:
+# server-ml\.venv\Scripts\pip install -r server-ml\requirements.txt
 pnpm dev:ml
 
 # 2) 后端（端口 3000）
-cd server && pnpm dev
+pnpm dev:server
+# 或：cd server && pnpm dev
 
 # 3) 前端（端口 8848）
 pnpm dev
 ```
 
-> `pnpm dev:ml` 调用的是 `server-ml/.venv` 里的解释器（Windows 路径）。
-> 虚拟机/容器里请按各自平台改用 `.venv/bin/python`，或直接
-> `python server-ml/main.py`。
-> 若 `.venv` 不存在该命令会直接失败——这比"静默用错解释器"更好排查，
-> 且不影响后端与前端的启动。
+> `pnpm dev:ml` 通过 `scripts/dev-ml.mjs` 跨平台启动：优先使用
+> `server-ml/.venv`（Windows 为 `Scripts/python.exe`，Linux/macOS 为 `bin/python`），
+> 找不到虚拟环境时回退到 PATH 上的 `python3`/`python`。
+> 也可直接：`server-ml/.venv/bin/python server-ml/main.py`（Linux/macOS）
+> 或 `server-ml\.venv\Scripts\python.exe server-ml\main.py`（Windows）。
 
 > ⚠️ **不启动 ML 服务时系统仍可完整运行**，但风险预测会自动降级为规则引擎
 > （响应 `source` 字段为 `rule`，前端会如实标注"规则分析结果"）。
@@ -174,13 +178,12 @@ pnpm dev
 - 管理员：`admin / admin123`
 
 > ⚠️ **演示链路请以 `common` 账号登录**，不要直接用 `admin`。
-> 种子数据只给 `common` 灌了近 7 天的每日健康记录，而风险预测 / SHAP 归因
-> / AI 画像都依赖它。用 `admin` 登录后打开「健康风险」页会显示
+> 服务首次启动只会创建演示账号（`admin` / `common`），**不会**自动灌入近 7 天每日健康记录。
+> 风险预测 / SHAP 归因 / AI 画像依赖这些每日记录；未灌数时「健康风险」页会显示
 > 「近 7 天暂无每日健康记录」的空白态——那不是故障，是「数据不足不做预测」的
 > 主动降级（空输入落在训练分布外，实测会被误判成 high 风险 0.904）。
-> 想让 `admin` 也有数据，先跑 `node server/scripts/seed-demo.mjs`。
 
-可选：一键初始化演示数据
+**演示前请先灌数**（幂等，只写 `common`；需要给 `admin` 也有数据时可改脚本或手动录入）：
 
 ```bash
 node server/scripts/seed-demo.mjs

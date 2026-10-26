@@ -281,6 +281,29 @@ export function buildReport(
   startDate: string,
   endDate: string
 ): ReportContent {
+  const period =
+    startDate && endDate ? `${startDate} ~ ${endDate}` : "全部记录";
+
+  // 无健康指标记录时不走规则引擎打分：档案生活方式修正会给出误导性的「综合评分 N 分」。
+  if (records.length === 0) {
+    return {
+      period,
+      startDate,
+      endDate,
+      score: 0,
+      level: "不足",
+      summary:
+        "数据不足：当前时间段内暂无健康指标记录，无法生成综合评分与风险等级。请先录入血压、血糖等指标后再生成报告。",
+      itemAnalysis: [],
+      risks: [],
+      suggestions: ["请先添加至少一条健康指标记录，再生成健康报告。"],
+      medicalAdvice: "",
+      evidence: [],
+      radar: [],
+      trend: []
+    };
+  }
+
   const { score, level, items, risks, suggestions, medicalAdvice } =
     analyzeHealth(records, profile);
 
@@ -288,9 +311,7 @@ export function buildReport(
   const abnormalCount = items.filter(i => i.level === 2).length;
   const warnCount = items.filter(i => i.level === 1).length;
   let summary = `本次评估综合评分为 ${score} 分，风险等级为「${level}」。`;
-  summary += items.length
-    ? ` 共分析 ${items.length} 项指标，其中 ${abnormalCount} 项异常、${warnCount} 项警戒。`
-    : " 该时间段内暂无健康指标记录。";
+  summary += ` 共分析 ${items.length} 项指标，其中 ${abnormalCount} 项异常、${warnCount} 项警戒。`;
   summary += LEVEL_SUMMARY[level] ?? "";
 
   // 各指标逐项分析
@@ -314,9 +335,6 @@ export function buildReport(
       diastolic: r.diastolic,
       fastingGlucose: r.fastingGlucose
     }));
-
-  const period =
-    startDate && endDate ? `${startDate} ~ ${endDate}` : "全部记录";
 
   return {
     period,

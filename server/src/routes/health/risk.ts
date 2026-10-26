@@ -262,14 +262,14 @@ router.get("/health/risk", authMiddleware, async (req, res) => {
       }
     });
   } catch {
-    // 降级：规则引擎
+    // 降级：规则引擎（ML 不可用时的兜底；前端据此标注「规则降级」而非伪装成 AI）
     const result = analyzeHealth(
       recordsForEngine(userId),
       profileForEngine(userId)
     );
     res.json({
       code: 0,
-      message: "规则引擎降级",
+      message: "ML 服务不可用，已降级为规则引擎结果",
       data: {
         source: "rule",
         riskLevel:
@@ -279,7 +279,11 @@ router.get("/health/risk", authMiddleware, async (req, res) => {
               ? "medium"
               : "high",
         riskProbability: result.score / 100,
-        dataQuality: { level: "rule", filledRatio: 0 },
+        // filledRatio 反映近 7 天是否有每日记录，避免前端 hasDaily=false 把降级结论整卡隐藏
+        dataQuality: {
+          level: "rule",
+          filledRatio: Math.min(1, days / 7)
+        },
         shapFactors: [],
         modelVersion: "rule-engine",
         healthType: analyzeHealthType(userId),

@@ -7,6 +7,7 @@ import db from "../db.js";
 import { adminOnly, authMiddleware } from "../middleware/auth.js";
 import { uploadsDir } from "../paths.js";
 import { splitRoles, type UserRow } from "../types.js";
+import { DEPT_TREE, findDept } from "../data/depts.js";
 
 const router = Router();
 
@@ -38,6 +39,11 @@ function findUser(id: number): UserRow | undefined {
 
 /** 用户列表行（字段与 mock 一致：dept 为对象、createTime 为毫秒时间戳） */
 function toListItem(user: UserRow) {
+  const dept =
+    findDept(user.dept_id) ??
+    (user.dept_id
+      ? { id: Number(user.dept_id), name: "" }
+      : { id: 0, name: "" });
   return {
     id: user.id,
     avatar: user.avatar ?? "",
@@ -47,6 +53,7 @@ function toListItem(user: UserRow) {
     email: user.email ?? "",
     sex: Number(user.sex ?? 0),
     status: Number(user.status ?? 1),
+    dept,
     remark: user.remark ?? "",
     createTime: toMillis(user.create_time)
   };
@@ -388,6 +395,13 @@ router.get("/list-all-role", authMiddleware, adminOnly, roleOptions);
 router.post("/list-all-role", authMiddleware, adminOnly, roleOptions);
 router.get("/list-role-ids", authMiddleware, adminOnly, roleIdsOf);
 router.post("/list-role-ids", authMiddleware, adminOnly, roleIdsOf);
+
+/** 部门树：前端 getDeptList 走 POST；回归脚本与部分调用走 GET —— 两边同口径 */
+function listDepts(_req: unknown, res: any): void {
+  res.json({ code: 0, message: "操作成功", data: DEPT_TREE });
+}
+router.get("/dept", authMiddleware, adminOnly, listDepts);
+router.post("/dept", authMiddleware, adminOnly, listDepts);
 
 // ---------- 头像上传 ----------
 

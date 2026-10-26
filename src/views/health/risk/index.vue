@@ -171,14 +171,20 @@ async function adopt() {
             </el-tag>
             <el-tag
               size="small"
-              :type="risk.source === 'ml' ? 'primary' : 'info'"
+              :type="risk.source === 'ml' ? 'primary' : 'warning'"
             >
-              {{ risk.source === "ml" ? "AI 模型预测" : "规则分析结果" }}
+              {{
+                risk.source === "ml" ? "AI 模型预测" : "规则降级（ML 不可用）"
+              }}
             </el-tag>
             <el-tag size="small" effect="plain">
               {{ risk.modelVersion }}
             </el-tag>
           </div>
+          <p v-if="risk.source === 'rule'" class="ml-fallback-hint">
+            当前为规则引擎降级结果，未使用 LightGBM / SHAP；请确认 ML
+            服务（:8000）已启动后再刷新。
+          </p>
         </div>
       </div>
 
@@ -758,5 +764,12 @@ async function adopt() {
   color: var(--hc-violet, #4f46e5);
   background: rgb(99 102 241 / 12%);
   border-radius: 999px;
+}
+
+.ml-fallback-hint {
+  margin: 10px 0 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--el-color-warning-dark-2, #b88230);
 }
 </style>

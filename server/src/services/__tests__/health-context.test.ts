@@ -1,9 +1,21 @@
 /**
  * 健康上下文服务最小测试（V1.5）。
- * buildHealthContext 直接读库，这里用一个不存在的 userId 验证空数据安全路径：
+ *
+ * vitest.config.ts 约定：server/src 下的单测不碰 SQLite。
+ * buildHealthContext 本身会读库，这里对取数依赖打桩，只验证空数据安全路径：
  * 不报错、返回空串、且绝不输出诊断性结论。
  */
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+
+vi.mock("../../routes/health/common.js", () => ({
+  profileForEngine: () => null,
+  recordsForEngine: () => []
+}));
+
+vi.mock("../../routes/health/report.js", () => ({
+  recentReportSummaries: () => []
+}));
+
 import { buildHealthContext } from "../health-context.js";
 
 describe("buildHealthContext", () => {

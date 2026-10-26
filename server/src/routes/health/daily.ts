@@ -27,7 +27,6 @@ import { analyzeHealth } from "../../../shared/health-engine.js";
 import { profileForEngine, recordsForEngine } from "./common.js";
 
 const router = Router();
-router.use(authMiddleware);
 
 interface DailyRow {
   id: number;
@@ -80,7 +79,7 @@ function recentRows(userId: number, days: number): DailyRow[] {
 }
 
 // ---------- POST /api/health/daily ----------
-router.post("/health/daily", (req, res) => {
+router.post("/health/daily", authMiddleware, (req, res) => {
   const userId = req.user!.id;
   const body = (req.body ?? {}) as Record<string, unknown>;
   const date = String(body.date ?? localDateKey(new Date()));
@@ -144,7 +143,7 @@ router.post("/health/daily", (req, res) => {
 });
 
 // ---------- GET /api/health/daily/today ----------
-router.get("/health/daily/today", (req, res) => {
+router.get("/health/daily/today", authMiddleware, (req, res) => {
   const userId = req.user!.id;
   const today = rowToView(findRow(userId, localDateKey(new Date()))) ?? {
     date: localDateKey(new Date()),
@@ -177,7 +176,7 @@ router.get("/health/daily/today", (req, res) => {
 });
 
 // ---------- GET /api/health/daily?days=7 ----------
-router.get("/health/daily", (req, res) => {
+router.get("/health/daily", authMiddleware, (req, res) => {
   const userId = req.user!.id;
   const days = Math.max(1, Math.min(90, Number(req.query.days ?? 7) || 7));
   const rows = recentRows(userId, days);

@@ -1030,21 +1030,23 @@ sec("6. 规则引擎分析 /api/health/analyze");
     anC.status === 200 && j(anC).code === 0,
     `status=${anC.status}`
   );
-  const explain = await api("GET", "/api/health/analyze/explanation", {
-    token: T.admin
+  const explain = await api("POST", "/api/health/analyze/explain", {
+    token: T.admin,
+    body: {}
   });
   const ed = j(explain).data ?? {};
   check(
-    "GET /api/health/analyze/explanation → 200 含规则版本与解释项",
+    "POST /api/health/analyze/explain → 200 含规则版本与解释项",
     explain.status === 200 &&
       j(explain).code === 0 &&
-      ed.ruleset?.version === "2026.1" &&
+      ed.engineVersion === "2026.1" &&
       Array.isArray(ed.items),
     `status=${explain.status} body=${explain.text.slice(0, 180)}`
   );
   check(
-    "GET /api/health/analyze/explanation 无 token → 401",
-    (await api("GET", "/api/health/analyze/explanation")).status === 401
+    "POST /api/health/analyze/explain 无 token → 401",
+    (await api("POST", "/api/health/analyze/explain", { body: {} })).status ===
+      401
   );
   const custom = await api("POST", "/api/health/analyze", {
     token: T.admin,
@@ -1647,8 +1649,8 @@ note(
     JSON.stringify(pick("diastolic") ?? null)
   );
   check(
-    "空腹血糖 8.5 → 疑似糖尿病（level 2）",
-    pick("fastingGlucose")?.grade === "疑似糖尿病" &&
+    "空腹血糖 8.5 → 血糖升高风险（level 2）",
+    pick("fastingGlucose")?.grade === "血糖升高风险" &&
       pick("fastingGlucose")?.level === 2,
     JSON.stringify(pick("fastingGlucose") ?? null)
   );

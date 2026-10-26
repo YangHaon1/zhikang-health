@@ -13,7 +13,6 @@ import {
 import { callLlm, llmAvailable } from "../../llm.js";
 
 const router = Router();
-router.use(authMiddleware);
 
 interface SummaryRow {
   id: number;
@@ -68,7 +67,7 @@ function loadDaily(userId: number) {
 }
 
 /** GET /api/ai/daily-summary —— 读今日总结（无则 null） */
-router.get("/ai/daily-summary", (req, res) => {
+router.get("/ai/daily-summary", authMiddleware, (req, res) => {
   ensureDailySummary();
   const row = db
     .prepare(
@@ -79,7 +78,7 @@ router.get("/ai/daily-summary", (req, res) => {
 });
 
 /** POST /api/ai/daily-summary/generate —— 生成今日总结（UPSERT） */
-router.post("/ai/daily-summary/generate", async (req, res) => {
+router.post("/ai/daily-summary/generate", authMiddleware, async (req, res) => {
   const userId = req.user!.id;
   ensureDailySummary();
   ensureHealthGoals();
@@ -138,7 +137,7 @@ router.post("/ai/daily-summary/generate", async (req, res) => {
 });
 
 /** GET /api/ai/goals —— 目标进度（从 healthGoal + 近 7 天现算） */
-router.get("/ai/goals", (req, res) => {
+router.get("/ai/goals", authMiddleware, (req, res) => {
   const userId = req.user!.id;
   ensureHealthGoals();
   const profile = profileForEngine(userId);

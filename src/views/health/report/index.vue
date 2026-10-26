@@ -74,7 +74,8 @@ const LEVEL_COLOR: Record<string, string> = {
   低: "#16a34a",
   中: "#f59e0b",
   高: "#f97316",
-  极高: "#dc2626"
+  极高: "#dc2626",
+  不足: "#94a3b8"
 };
 function levelColor(level: string): string {
   return LEVEL_COLOR[level] ?? "#16a34a";
