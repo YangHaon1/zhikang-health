@@ -1,26 +1,28 @@
 /**
- * 智康健康管理系统 — 深色驾驶舱主题
+ * 智康健康管理系统 — 深色驾驶舱主题（Apple 克制修订）
  *
  * 作用域：仅在 `html.dark .health-cockpit` 下生效，浅色模式与 system 页不受影响。
  * 用法：health 模块每个页面根节点加 `class="health-cockpit"`。
+ * 定稿：主色冷灰蓝；青作点缀；紫仅 AI；人体 2D SVG MVP。
  */
 
 @use "sass:color";
 
 html.dark .health-cockpit {
   /* ===== 背景层级 ===== */
-  --hc-bg-base: #050810;
-  --hc-bg-raise: #0a1120;
-  --hc-card: rgb(148 184 255 / 4%);
-  --hc-card-hover: rgb(148 184 255 / 8%);
-  --hc-border: rgb(148 184 255 / 12%);
-  --hc-border-strong: rgb(148 184 255 / 28%);
+  --hc-bg-base: #07090f;
+  --hc-bg-raise: #0c1018;
+  --hc-card: rgb(148 163 184 / 5%);
+  --hc-card-hover: rgb(148 163 184 / 9%);
+  --hc-border: rgb(148 163 184 / 14%);
+  --hc-border-strong: rgb(148 163 184 / 28%);
 
-  /* ===== 主色与霓虹 ===== */
-  --hc-primary: #22d3ee;
+  /* ===== 主色：冷灰蓝；青点缀；紫仅 AI ===== */
+  --hc-primary: #8ba3c7;
+  --hc-accent: #5eead4;
   --hc-violet: #a78bfa;
-  --hc-blue: #60a5fa;
-  --hc-cyan-grad: linear-gradient(135deg, #22d3ee 0%, #60a5fa 100%);
+  --hc-blue: #93a4bd;
+  --hc-cyan-grad: linear-gradient(135deg, #8ba3c7 0%, #64748b 100%);
   --hc-violet-grad: linear-gradient(135deg, #6366f1 0%, #a78bfa 100%);
 
   /* ===== 语义色（深底专用） ===== */
@@ -31,23 +33,27 @@ html.dark .health-cockpit {
   --hc-level-unknown: #94a3b8;
 
   /* ===== 文字 ===== */
-  --hc-text-primary: #e6edf7;
+  --hc-text-primary: #e8eef7;
   --hc-text-secondary: #9aa8bf;
   --hc-text-disabled: #5b6b85;
 
-  /* 页面根容器底色 */
+  /* ===== 动效 ===== */
+  --hc-motion-duration: 240ms;
+  --hc-motion-ease: cubic-bezier(0.22, 1, 0.36, 1);
+
+  /* 页面根容器底色：更干净，光晕极淡 */
   min-height: 100%;
   color: var(--hc-text-primary);
   background:
     radial-gradient(
-      1200px 600px at 80% -10%,
-      rgb(99 102 241 / 10%),
-      transparent 60%
+      1000px 520px at 78% -8%,
+      rgb(139 163 199 / 7%),
+      transparent 62%
     ),
     radial-gradient(
-      900px 500px at -10% 110%,
-      rgb(34 211 238 / 8%),
-      transparent 60%
+      800px 420px at -8% 108%,
+      rgb(94 234 212 / 4%),
+      transparent 58%
     ),
     var(--hc-bg-base);
 
@@ -58,16 +64,25 @@ html.dark .health-cockpit {
     }
   }
 
-  /* ===== 通用玻璃卡片 ===== */
+  @media (prefers-reduced-motion: reduce) {
+    --hc-motion-duration: 1ms;
+
+    .hc-fade-enter-from,
+    .hc-fade-leave-to {
+      transform: none;
+    }
+  }
+
+  /* ===== 通用玻璃卡片（弱发光） ===== */
   .hc-card {
     background: var(--hc-card);
     border: 1px solid var(--hc-border);
-    border-radius: 12px;
-    backdrop-filter: blur(12px);
+    border-radius: 14px;
+    backdrop-filter: blur(14px);
     transition:
-      border-color 0.2s,
-      background 0.2s,
-      transform 0.2s;
+      border-color var(--hc-motion-duration) var(--hc-motion-ease),
+      background var(--hc-motion-duration) var(--hc-motion-ease),
+      transform var(--hc-motion-duration) var(--hc-motion-ease);
   }
 
   .hc-card--hover:hover {
@@ -77,37 +92,48 @@ html.dark .health-cockpit {
 
   .hc-card--glow {
     border-color: var(--hc-border-strong);
-    box-shadow:
-      0 0 24px rgb(34 211 238 / 8%),
-      inset 0 1px 0 rgb(255 255 255 / 4%);
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 4%);
   }
 
-  /* ===== 霓虹数字 ===== */
+  /* ===== 数字 ===== */
   .hc-num {
     font-family: "DIN Alternate", "JetBrains Mono", ui-monospace, monospace;
     font-variant-numeric: tabular-nums;
-    letter-spacing: 0.5px;
+    letter-spacing: 0.4px;
   }
 
-  /* ===== 霓虹分割线 ===== */
+  /* ===== 分割线 ===== */
   .hc-divider {
     height: 1px;
     background: linear-gradient(
       90deg,
       transparent,
-      rgb(34 211 238 / 40%),
-      rgb(167 139 250 / 40%),
+      rgb(139 163 199 / 35%),
       transparent
     );
     border: none;
   }
 
-  /* ===== 霓虹进度条 ===== */
+  /* ===== 进度条（克制） ===== */
   .hc-progress-glow {
     .el-progress__bar,
     .el-progress-bar__inner {
       background-image: var(--hc-cyan-grad) !important;
-      box-shadow: 0 0 8px rgb(34 211 238 / 60%);
+      box-shadow: none;
     }
+  }
+
+  /* ===== 页内过渡辅助 ===== */
+  .hc-fade-enter-active,
+  .hc-fade-leave-active {
+    transition:
+      opacity var(--hc-motion-duration) var(--hc-motion-ease),
+      transform var(--hc-motion-duration) var(--hc-motion-ease);
+  }
+
+  .hc-fade-enter-from,
+  .hc-fade-leave-to {
+    opacity: 0;
+    transform: translateY(8px);
   }
 }

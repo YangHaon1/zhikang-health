@@ -19,6 +19,10 @@ import TodayScoreCard from "@/components/health/TodayScoreCard.vue";
 import TodayStatusCard from "@/components/health/TodayStatusCard.vue";
 import AIAdviceCard from "@/components/health/AIAdviceCard.vue";
 import QuickDailyRecord from "@/components/health/QuickDailyRecord.vue";
+import BodyHealthMap, {
+  type BodyHotspot,
+  type BodyHotspotKey
+} from "@/components/health/BodyHealthMap.vue";
 import {
   analyzeHealth,
   worseGrade,
@@ -269,6 +273,56 @@ const riskFactors = computed(() => {
   if (studentProfile.value && studentProfile.value.sedentaryHours >= 10)
     list.push("久坐时间过长");
   return list;
+});
+
+/** 人体健康图热点：映射五维 + 风险倾向 */
+const selectedBodyKey = ref<BodyHotspotKey | null>(null);
+const bodyHotspots = computed<BodyHotspot[]>(() => {
+  const dims = fiveDimensions.value;
+  const colorOf = (v: number | null) => {
+    if (v == null) return "var(--hc-level-unknown)";
+    if (v >= 75) return "var(--hc-level-low)";
+    if (v >= 50) return "var(--hc-primary)";
+    if (v >= 35) return "var(--hc-level-mid)";
+    return "var(--hc-level-high)";
+  };
+  const fromDim = (key: BodyHotspotKey, fallbackLabel: string): BodyHotspot => {
+    const d = dims.find(x => x.key === key);
+    return {
+      key,
+      label: d?.label ?? fallbackLabel,
+      value: d?.value ?? null,
+      detail: d?.basis,
+      color: colorOf(d?.value ?? null)
+    };
+  };
+  const spots: BodyHotspot[] = [
+    fromDim("sleep", "睡眠健康"),
+    fromDim("stress", "压力状态"),
+    fromDim("exercise", "运动健康"),
+    fromDim("diet", "饮食规律"),
+    fromDim("routine", "作息规律")
+  ];
+  if (riskView.value) {
+    const lv = riskView.value.riskLevel;
+    const color =
+      lv === "low"
+        ? "var(--hc-level-low)"
+        : lv === "medium"
+          ? "var(--hc-level-mid)"
+          : lv === "high"
+            ? "var(--hc-level-high)"
+            : "var(--hc-level-unknown)";
+    const prob = riskView.value.riskProbability;
+    spots.push({
+      key: "risk",
+      label: "综合风险",
+      value: typeof prob === "number" ? Math.round(prob * 100) : null,
+      detail: riskLevelText.value || undefined,
+      color
+    });
+  }
+  return spots;
 });
 
 /** V2.0 亚健康状态总评 */
@@ -555,6 +609,20 @@ onBeforeUnmount(() => {
           <div v-if="i < demoSteps.length - 1" class="demo-line" />
         </template>
       </div>
+    </section>
+
+    <!-- UI：人体健康图（2D SVG MVP） -->
+    <section class="body-hero">
+      <div class="body-hero__head">
+        <p>BODY MAP</p>
+        <h2>人体健康概览</h2>
+        <span>点击热点查看维度依据；数据来自近 7 日记录</span>
+      </div>
+      <BodyHealthMap
+        v-model="selectedBodyKey"
+        mode="cockpit"
+        :hotspots="bodyHotspots"
+      />
     </section>
 
     <!-- M2：AI 健康驾驶舱（今日评分 / 状态 / AI建议，数据全部来自 /daily/today） -->
@@ -917,6 +985,38 @@ onBeforeUnmount(() => {
 
   .demo-line {
     display: none;
+  }
+}
+
+/* UI：人体健康图区块 */
+.body-hero {
+  margin-bottom: 20px;
+}
+
+.body-hero__head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  align-items: baseline;
+  margin-bottom: 12px;
+
+  p {
+    margin: 0;
+    font-size: 11px;
+    color: var(--hc-text-secondary, #9aa8bf);
+    letter-spacing: 0.08em;
+  }
+
+  h2 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--hc-text-primary, #17382c);
+  }
+
+  span {
+    font-size: 12px;
+    color: var(--hc-text-secondary, #9aa8bf);
   }
 }
 
